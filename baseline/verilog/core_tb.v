@@ -11,11 +11,13 @@ parameter len_onij = 16;
 parameter col = 8;
 parameter row = 8;
 parameter len_nij = 36;
+parameter inst_w = 35;
+parameter ADDR_W = 11;
 
 reg clk = 0;
 reg reset = 1;
 
-wire [33:0] inst_q; 
+wire [inst_w-1:0] inst_q; 
 
 reg [1:0]  inst_w_q = 0; 
 reg [bw*row-1:0] D_xmem_q = 0;
@@ -66,6 +68,7 @@ integer captured_data;
 integer t, i, j, k, kij;
 integer error;
 
+assign inst_q[34] = op_mode;
 assign inst_q[33] = acc_q;
 assign inst_q[32] = CEN_pmem_q;
 assign inst_q[31] = WEN_pmem_q;
@@ -82,7 +85,8 @@ assign inst_q[1]   = execute_q;
 assign inst_q[0]   = load_q; 
 
 
-core  #(.bw(bw), .col(col), .row(row)) core_instance (
+core  #(.bw(bw), .col(col), .row(row), .inst_w(inst_w), 
+          .psum_bw(psum_bw), .ADDR_W(ADDR_W)) core_instance (
 	.clk(clk), 
   .reset(reset),
 	.inst(inst_q),
@@ -280,15 +284,15 @@ initial begin
     #0.5 clk = 1'b0; reset = 0; 
     #0.5 clk = 1'b1;  
 
-    for (j=0; j<len_kij+1; j=j+1) begin 
-
-      #0.5 clk = 1'b0;   
-        if (j<len_kij) begin CEN_pmem = 0; WEN_pmem = 1; acc_scan_file = $fscanf(acc_file,"%11b", A_pmem); end
-                       else  begin CEN_pmem = 1; WEN_pmem = 1; end
-
-        if (j>0)  acc = 1;  
-      #0.5 clk = 1'b1;   
-    end
+    // for (j=0; j<len_kij+1; j=j+1) begin 
+    // 
+    //   #0.5 clk = 1'b0;   
+    //     if (j<len_kij) begin CEN_pmem = 0; WEN_pmem = 1; acc_scan_file = $fscanf(acc_file,"%11b", A_pmem); end
+    //                    else  begin CEN_pmem = 1; WEN_pmem = 1; end
+    // 
+    //     if (j>0)  acc = 1;  
+    //   #0.5 clk = 1'b1;   
+    // end
 
     #0.5 clk = 1'b0; acc = 0;
     #0.5 clk = 1'b1; 
@@ -301,7 +305,7 @@ initial begin
 
   end
 
-  $fclose(acc_file);
+  // $fclose(acc_file);
   //////////////////////////////////
 
   for (t=0; t<10; t=t+1) begin  
