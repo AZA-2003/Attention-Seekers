@@ -31,11 +31,11 @@ module l0 (clk, in, out, rd, wr, o_full, reset, o_ready);
 	 .wr_clk(clk),
 	 .rd(rd_en[i]),
 	 .wr(wr),
-         .o_empty(empty[i]),
-         .o_full(full[i]),
+       .o_empty(empty[i]),
+       .o_full(full[i]),
 	 .in(in[(((i+1)*bw)-1):(i*bw)]),
 	 .out(out[(((i+1)*bw)-1):(i*bw)]),
-         .reset(reset));
+       .reset(reset));
   end
 
 
