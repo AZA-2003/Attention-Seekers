@@ -16,6 +16,7 @@ from config import *
 print("Setting up Model..")
 model_name = "VGG16_quant_V1"
 model = VGG16_quant()
+print(model)
 criterion =  nn.CrossEntropyLoss()
 
 print("Preparing Data..")
@@ -47,14 +48,14 @@ os.makedirs("./results",exist_ok=True)
 os.makedirs(f"./results/{model_name}",exist_ok=True)
 
 print("Setting up optimizers..")
-## Adam optimizer
+## Adam optimizer (NOT VERY GOOD!)
 # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 ## SGD optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.95)
 
 ## Combined LR Scheduler (Warmup followed by Cosine Annealing)
-steps = EPOCHS * (sum([len(t) for t in trainloader]))
-warmup_steps = WARMUP_STEPS * (sum([len(t) for t in trainloader]))
+steps = EPOCHS * (len(iter(trainloader)))
+warmup_steps = WARMUP_STEPS * (len(iter(trainloader)))
 #steps = EPOCHS
 # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer,
 #                                                     T_max=steps)
@@ -78,11 +79,12 @@ print("Setting up Trainer..")
 trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,testloader)
 print("Training...")
 trainer.train(EPOCHS)
-saves = trainer.hook_layer()
+trainer.validate(save_weights=True)
 
+## Hooking layers
+saves = trainer.hook_layer()
 dataiter = iter(testloader)
 images, labels = next(dataiter)
-images = images.to(trainer.device)
-out = trainer.model(images)
-
-print(saves)
+img = input_img = images[0].reshape(1,images.shape[1],images.shape[2],images.shape[3]).to(trainer.device)
+out = trainer.model(img)
+print(saves.outputs[0][0].shape,saves.outputs[1][0].shape, trainer.model.features[27].weight_q.shape)

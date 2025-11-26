@@ -4,10 +4,20 @@ import time
 from tqdm import tqdm
 import shutil
 import torch
+from torch.nn.utils import clip_grad_norm_
+from typing import Dict
 
 
 from models import *
 from config import *
+
+class SaveOutput:
+    def __init__(self):
+        self.outputs = []
+    def __call__(self, module, module_in,*args, **kwargs):
+        self.outputs.append(module_in)
+    def clear(self):
+        self.outputs = []  
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -65,9 +75,9 @@ class Trainer():
                        "Date Trained": time.ctime(time.time()),
                        "Best prec": 0}
     
-    def train(self,epochs,print_freq=100):
-        self.model.train()
+    def train(self,epochs,print_freq=200):
         for epoch in tqdm(range(epochs)):
+            self.model.train()
             losses = AverageMeter()
             top1 = AverageMeter()
             #progress_bar = tqdm(self.train_loader, desc="Training batch", leave=False, colour="yellow")
@@ -82,6 +92,7 @@ class Trainer():
                 top1.update(prec.item(), inputs.size(0))
                 
                 self.optimizer.zero_grad()
+                clip_grad_norm_(self.model.parameters(),1.0)
                 loss.backward()
                 self.optimizer.step()
                 self.scheduler.step()
@@ -90,10 +101,11 @@ class Trainer():
                         'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                         'Prec {top1.val:.3f}% ({top1.avg:.3f}%)'.format(
                         epoch, i, len(self.train_loader), loss=losses, top1=top1, lr=self.scheduler.get_last_lr()[0]))
-            prec = self.validate(save_weights=True)
+            prec = self.validate(save_weights=False)
             self.scribe["Best prec"] = max(self.scribe["Best prec"],prec)
-            print(f"Best accuracy: {self.scribe["Best prec"]}")        
-            self.model.train()
+            best = self.scribe['Best prec']
+            print(f"Best accuracy: {best}")        
+            # self.model.train()
             #self.scheduler.step()
         self.log_progress()
 
@@ -123,48 +135,37 @@ class Trainer():
         print(' * Prec {top1:.3f}% '.format(top1=best_prec))
         if save_weights and prec > self.scribe["Best prec"]:
             if best_prec >= 90:
-                self.save_chkpoint({"name": self.name,
-                            "state_dict": self.model.state_dict(),
-                            "optimizer": self.optimizer.state_dict()},
-                            f"./chkpoints/{self.name}/chkpoints_prime_{best_prec}.pth")
+                self.sve_chkpoint({"name": self.name,"state_dict": self.model.state_dict(),"optimizer": self.optimizer.state_dict()},
+                                  f"./results/{self.name}/chkpoints_prime_{best_prec}.pth")
             elif best_prec >= 85:
-                self.save_chkpoint({"name": self.name,
-                                    "state_dict": self.model.state_dict(),
-                                    "optimizer": self.optimizer.state_dict()},
-                                    f"./chkpoints/{self.name}/chkpoints_good_{best_prec}.pth")
+                self.sve_chkpoint({"name": self.name,"state_dict": self.model.state_dict(),"optimizer": self.optimizer.state_dict()},
+                                    f"./results/{self.name}/chkpoints_good_{best_prec}.pth")
             else:
-                self.save_chkpoint({"name": self.name,
+                self.sve_chkpoint({"name": self.name,
                     "state_dict": self.model.state_dict(),
                     "optimizer": self.optimizer.state_dict()},
-                    f"./chkpoints/{self.name}/chkpoints_{best_prec}.pth")
+                    f"./results/{self.name}/chkpoints_{best_prec}.pth")
                 
     
         return best_prec
-                
-    def save_chkpoint(state,fdir):
+    @staticmethod     
+    def sve_chkpoint(state: Dict,fdir):
         '''Saves checkpoints to designated checkpoint path'''
         torch.save(state,fdir)
         
     def log_progress(self):
-        with open(SCRIBE,"w") as f:
-            f.write(f"{self.scribe["Name"]}\t{self.scribe["Date Trained"]}\t{self.scribe["Best prec"]}")
-    
-    def load_chkpoint(self,fdir):
+        with open(SCRIBE,"a") as f:
+            f.write(f"{self.scribe['Name']}\t{self.scribe['Date Trained']}\t{self.scribe['Best prec']}\n")
+    @staticmethod 
+    def load_chkpoint(fdir):
         '''loads checkpoints given a checkpoint path'''
         checkpoint = torch.load(fdir)
         return checkpoint
         # self.model.load_state_dict(checkpoint['state_dict'])
     
     def hook_layer(self):
-        class SaveOutput:
-            def __init__(self):
-                self.outputs = []
-            def __call__(self, module, module_in):
-                self.outputs.append(module_in)
-            def clear(self):
-                self.outputs = []  
         save = SaveOutput()
-        self.model.featues[26].register_forward_pre_hook(save)
-        self.model.featues[26].register_forward_hook(save)
+        self.model.features[30].register_forward_pre_hook(save)
+        self.model.features[31].register_forward_pre_hook(save) ##hook after the convolution and BEFORE the ReLU
         return save
         

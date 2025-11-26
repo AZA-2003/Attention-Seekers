@@ -7,7 +7,8 @@ from models.quant_layer import *
 
 ## X marks the layer being modified to fit our needs
 cfg = {
-    'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 'X', 512, 'M'],
+    'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 8, 'X', 'M']
+    #'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'] # original,
     # 'Custom': [64, 64, 'M', 128, 128,'M', 256, 256, 256, 'M', 128, 128, 128, 'M', 64, 64, 64, "M", 8, 8,'M']
 }
 
@@ -16,7 +17,7 @@ class VGG_quant(nn.Module):
     def __init__(self, vgg_name):
         super(VGG_quant, self).__init__()
         self.features = self._make_layers(cfg[vgg_name])
-        self.classifier = nn.Linear(512, 10)
+        self.classifier = nn.Linear(32, 10)
 
     def forward(self, x):
         out = self.features(x)
