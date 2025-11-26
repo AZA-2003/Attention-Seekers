@@ -1,0 +1,29 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Mon Nov 24 10:52:19 2025
+[*]
+[dumpfile] "/foss/designs/Attention-Seekers/hardware/sim/l0_tb.vcd"
+[dumpfile_mtime] "Mon Nov 24 10:21:20 2025"
+[dumpfile_size] 319690
+[savefile] "/foss/designs/Attention-Seekers/hardware/sim/l0_tb_waves.gtkw"
+[timestart] 76800
+[size] 1920 1043
+[pos] -27 -24
+*-15.000000 205000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[treeopen] l0_tb.
+[sst_width] 297
+[signals_width] 102
+[sst_expanded] 1
+[sst_vpaned_height] 304
+@28
+l0_tb.clk
+l0_tb.reset
+l0_tb.wr
+@22
+l0_tb.in[31:0]
+@28
+l0_tb.rd
+@23
+l0_tb.out[31:0]
+[pattern_trace] 1
+[pattern_trace] 0
