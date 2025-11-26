@@ -1,0 +1,13 @@
+../src/fifo_mux_2_1.v
+../src/fifo_mux_8_1.v
+../src/fifo_mux_16_1.v
+../src/fifo_depth8.v
+../src/fifo_depth64.v
+../src/mac.v
+../src/mac_tile.v
+../src/mac_row.v
+../src/mac_array.v
+../src/l0.v
+../src/ofifo.v
+../src/l0_and_mac_array.v
+../tb/l0_and_mac_array_tb.sv
