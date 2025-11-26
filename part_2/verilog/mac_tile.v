@@ -21,7 +21,7 @@ reg simd; // load while loading weight
 wire [psum_bw-1:0] mac_out;
 
 reg load_ready_q0, load_ready_q1;
-reg [1:0] inst_q;
+reg [2:0] inst_q;
 
 assign out_s = mac_out;
 assign out_e = a_q;
