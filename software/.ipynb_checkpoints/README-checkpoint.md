@@ -21,8 +21,8 @@ VGGNet16 with the following features:
 - BatchNorm removed in layer X (the layer with 8 bit inputs and 8 bit outputs)  
 Note that the layer we are recreating utilizes the following parameter sizes:
 - kernel size: $3\times3$
-- input_dim (w/out padding): $\text{batch_size}\times 8 \times 4 \times 4 $
-- output_dim: $\text{batch_size}\times 8 \times 4 \times 4 $
+- input_dim (w/out padding): $\text{batchsize}\times 8 \times 4 \times 4 $
+- output_dim: $\text{batchsize}\times 8 \times 4 \times 4 $
 - weights_dim: $8 \times 8 \times 3 \times$
 
 Currently it is hitting ~87%  on 4-bit and ~60% on the 2-bit so some tuning will be needed!
