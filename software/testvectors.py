@@ -127,7 +127,7 @@ print(a_pad.shape)
 X = a_pad[:,nij:nij+8]  # [tile_num, array row num, time_steps]
 
 bit_precision = 4
-file = open(f"{model_name}_activation.txt", 'w') #write to file
+file = open(f"{model_name}_{nij}_activation.txt", 'w') #write to file
 file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
 file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
 file.write('#................#\n')
@@ -145,7 +145,7 @@ kij = 0
 W = w_int[:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
 
 bit_precision = 4
-file = open(f"{model_name}_weight.txt", 'w') #write to file
+file = open(f"{model_name}_{kij}_weight.txt", 'w') #write to file
 file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
 file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
 file.write('#................#\n')
@@ -172,7 +172,7 @@ PS = psum[:,nij:nij+8,kij]
 # psum[len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)]
 
 bit_precision = 16
-file = open(f"{model_name}_psum.txt", 'w') #write to file
+file = open(f"{model_name}_{nij}_{kij}_psum.txt", 'w') #write to file
 file.write('#time0col7[msb-lsb],time0col6[msb-lst],....,time0col0[msb-lst]#\n')
 file.write('#time1col7[msb-lsb],time1col6[msb-lst],....,time1col0[msb-lst]#\n')
 file.write('#................#\n')
