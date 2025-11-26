@@ -15,21 +15,21 @@ def weight_quantization(b):
         #print('uniform quant bit: ', b)
         return xhard
     ## Something for an +alpha
-    def log_quant(x,b,a):
-        if x == 0:
-            return 0
-        ## assume no clamping
-        fsr = torch.log2(2*a)
-        minimum = fsr-2**b
-        maximum = fsr-1
-        x_log = torch.round(torch.log2(torch.abs(x)))
-        if x_log < minimum:
-            x_cliplog = 0
-        elif x_log > maximum:
-            x_cliplog = maximum
-        else:
-            x_cliplog = x_log
-        return a*x_cliplog
+    # def log_quant(x,b,a):
+    #     if x == 0:
+    #         return 0
+    #     ## assume no clamping
+    #     fsr = torch.log2(2*a)
+    #     minimum = fsr-2**b
+    #     maximum = fsr-1
+    #     x_log = torch.round(torch.log2(torch.abs(x)))
+    #     if x_log < minimum:
+    #         x_cliplog = 0
+    #     elif x_log > maximum:
+    #         x_cliplog = maximum
+    #     else:
+    #         x_cliplog = x_log
+    #     return a*x_cliplog
         
 
     class _pq(torch.autograd.Function):

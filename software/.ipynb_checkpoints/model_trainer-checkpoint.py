@@ -133,7 +133,8 @@ class Trainer():
         
         best_prec = top1_val.avg
         print(' * Prec {top1:.3f}% '.format(top1=best_prec))
-        if save_weights and prec > self.scribe["Best prec"]:
+        # if save_weights and prec > self.scribe["Best prec"]:
+        if save_weights:
             if best_prec >= 90:
                 self.sve_chkpoint({"name": self.name,"state_dict": self.model.state_dict(),"optimizer": self.optimizer.state_dict()},
                                   f"./results/{self.name}/chkpoints_prime_{best_prec}.pth")
@@ -166,6 +167,6 @@ class Trainer():
     def hook_layer(self):
         save = SaveOutput()
         self.model.features[30].register_forward_pre_hook(save)
-        self.model.features[31].register_forward_pre_hook(save) ##hook after the convolution and BEFORE the ReLU
+        self.model.features[30].register_forward_hook(save) ##hook after the convolution and BEFORE the ReLU
         return save
         

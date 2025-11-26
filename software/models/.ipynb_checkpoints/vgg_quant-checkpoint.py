@@ -7,7 +7,8 @@ from models.quant_layer import *
 
 ## X marks the layer being modified to fit our needs
 cfg = {
-    'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 256, 8, 'X', 'M']
+    'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 256, 8, 'X', 'M'],
+    'VGG16_quant2': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 256, 16, 'Y', 'M']
     # 'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 8, 'X', 'M']
     #'VGG16_quant': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'] # original,
     # 'Custom': [64, 64, 'M', 128, 128,'M', 256, 256, 256, 'M', 128, 128, 128, 'M', 64, 64, 64, "M", 8, 8,'M']
@@ -18,7 +19,10 @@ class VGG_quant(nn.Module):
     def __init__(self, vgg_name):
         super(VGG_quant, self).__init__()
         self.features = self._make_layers(cfg[vgg_name])
-        self.classifier = nn.Linear(32, 10)
+        if vgg_name == "VGG16_quant2":
+            self.classifier = nn.Linear(64, 10)
+        else:
+            self.classifier = nn.Linear(32, 10)
 
     def forward(self, x):
         out = self.features(x)
@@ -42,6 +46,10 @@ class VGG_quant(nn.Module):
                 layers += [QuantConv2d(in_channels, 8, kernel_size=3, padding=1),
                            nn.ReLU(inplace=True)]
                 in_channels = 8
+            elif x == 'Y':
+                layers += [QuantConv2d(in_channels, 16, kernel_size=3, padding=1),
+                           nn.ReLU(inplace=True)]
+                in_channels = 16
             else:
                 layers += [QuantConv2d(in_channels, x, kernel_size=3, padding=1),
                            nn.BatchNorm2d(x),
@@ -54,10 +62,15 @@ class VGG_quant(nn.Module):
         for m in self.modules():
             if isinstance(m, QuantConv2d):
                 m.show_params()
+
     
 
 def VGG16_quant(**kwargs):
     model = VGG_quant(vgg_name = 'VGG16_quant', **kwargs)
+    return model
+
+def VGG16_quant2(**kwargs):
+    model = VGG_quant(vgg_name = 'VGG16_quant2', **kwargs)
     return model
 
 # def Custom_quant(**kwargs):
