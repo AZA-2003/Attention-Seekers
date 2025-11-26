@@ -13,3 +13,10 @@ To git add all the files: `git add .`
 `git commit -m <message>`
 - **Git push:** push any and all committed changes back to the repository branch  
 `git push origin master`
+
+## Directory Structure
+
+- **baseline**: Initial work on vanilla version.
+- **hardware**: An extension of vanilla version with a controller and further verification.
+- **part_2**  : Work on output stationary mapping.
+- **software**: All work related to model development and strategies on quantization, pruning, etc.
