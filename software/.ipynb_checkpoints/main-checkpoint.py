@@ -16,11 +16,11 @@ from config import *
 print("Training 4-bit Baseline for the 2-bit Training")
 print("Setting up Model..")
 ## Original 4-bit model
-model_name = "VGG16_quant_4bit_base"
-model = VGG16_quant()
+# model_name = "VGG16_quant_4bit_base"
+# model = VGG16_quant()
 ## 4-bit modle base for 2-bit training
-# model_name = "VGG16_quant_2bit_4pt"
-# model = VGG16_quant2()
+model_name = "VGG16_quant_2bit_4pt"
+model = VGG16_quant2()
 #print(model)
 criterion =  nn.CrossEntropyLoss()
 
@@ -78,8 +78,8 @@ scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer=optimizer,
 print("Setting up Trainer..")
 trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,testloader)
 print("Training...")
-trainer.train(EPOCHS)
-trainer.validate(save_weights=True)
+# trainer.train(EPOCHS)
+# trainer.validate(save_weights=True)
 
 print("Training 2-bit Baseline")
 print("Setting up Model..")
@@ -106,7 +106,7 @@ scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer=optimizer,
 
 print("Setting up Trainer..")
 trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,testloader)
-trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_4pt/chkpoints_good_85.8.pth")['state_dict'])
+trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_4pt/chkpoints_good_88.03.pth")['state_dict'])
 ## change the activation bits to 2
 for l in trainer.model.features:
     if isinstance(l,QuantConv2d):

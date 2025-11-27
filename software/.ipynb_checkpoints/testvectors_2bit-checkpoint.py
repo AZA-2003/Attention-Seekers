@@ -14,7 +14,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 model_name = "VGG16_quant_2bit_base"
-model = VGG16_quant()
+model = VGG16_quant2()
 #print(model)
 criterion = nn.CrossEntropyLoss()
 
@@ -33,7 +33,7 @@ test_dataset = torchvision.datasets.CIFAR10(
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
 trainer = Trainer(model_name,model,criterion,None,None,None,testloader)
-trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_base/chkpoints_good_86.53.pth")['state_dict'])
+trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_base/chkpoints_good_87.79.pth")['state_dict'])
 print("Validating before we begin")
 trainer.validate(save_weights=False)
 
@@ -85,6 +85,8 @@ njg = range(act_int.size(3))  ## nj group
 icg = range(int(w_int.size(1)))  ## input channel [0,...8]
 ocg = range(int(w_int.size(0)))  ## output channel
 
+ic_tileg = range(int(len(icg)/array_size))
+oc_tileg = range(int(len(ocg)/array_size))
 
 kijg = range(w_int.size(2)) # [0, .. 8]
 ki_dim = int(math.sqrt(w_int.size(2)))  ## Kernel's 1 dim size
@@ -94,39 +96,56 @@ a_pad = torch.zeros(len(icg), len(nig)+padding*2, len(njg)+padding*2).cuda()
 # a_pad.size() = [8, 4+2pad, 4+2pad]
 a_pad[ :, padding:padding+len(nig), padding:padding+len(njg)] = act_int.cuda()
 a_pad = torch.reshape(a_pad, (a_pad.size(0), -1))  ## mergin ni and nj index into nij
+
+a_tile = torch.zeros(len(ic_tileg), array_size,    a_pad.size(1)).cuda() 
+w_tile = torch.zeros(len(oc_tileg)*len(ic_tileg), array_size, array_size, len(kijg)).cuda() 
+
+for ic_tile in ic_tileg:
+    a_tile[ic_tile,:,:] = a_pad[ic_tile*array_size:(ic_tile+1)*array_size,:]
+
+for ic_tile in ic_tileg:
+    for oc_tile in oc_tileg:
+        w_tile[oc_tile*len(oc_tileg) + ic_tile,:,:,:] = w_int[oc_tile*array_size:(oc_tile+1)*array_size, ic_tile*array_size:(ic_tile+1)*array_size, :]
 # print(a_pad.shape)
 p_nijg = range(a_pad.size(1)) ## paded activation's nij group [0, ...34*34-1]
 
-psum = torch.zeros( array_size, len(p_nijg), len(kijg)).cuda() 
-for kij in kijg:       
-    for nij in p_nijg:     # time domain, sequentially given input
-        m = nn.Linear(array_size, array_size, bias=False)
-        m.weight = torch.nn.Parameter(w_int[:,:,kij])
-        psum[:, nij, kij] = m(a_pad[:,nij]).cuda()
+psum = torch.zeros(len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)).cuda() 
+for kij in kijg:
+    for ic_tile in ic_tileg:       # Tiling into array_sizeXarray_size array
+        for oc_tile in oc_tileg:   # Tiling into array_sizeXarray_size array        
+            for nij in p_nijg:       # time domain, sequentially given input
+                    #print(kij,ic_tile,oc_tile,nij)
+                    m = nn.Linear(array_size, array_size, bias=False).cuda()
+                    #m.weight = torch.nn.Parameter(w_int[oc_tile*array_size:(oc_tile+1)*array_size, ic_tile*array_size:(ic_tile+1)*array_size, kij])
+                    m.weight = torch.nn.Parameter(w_tile[len(oc_tileg)*oc_tile+ic_tile,:,:,kij])
+                    psum[ic_tile, oc_tile, :, nij, kij] = m(a_tile[ic_tile,:,nij])
 
-a_pad_ni_dim = int(math.sqrt(a_pad.size(1))) # 32 + 2*pad = 34
+a_pad_ni_dim = int(math.sqrt(a_pad.size(1))) # 32
 
-o_ni_dim = int((a_pad_ni_dim - (ki_dim- 1) - 1)/stride + 1) #34 - 2 - 1 + 1 = 32
-o_nijg = range(o_ni_dim**2) # [0, 32*32-1]    
+o_ni_dim = int((a_pad_ni_dim - (ki_dim- 1) - 1)/stride + 1)
+o_nijg = range(o_ni_dim**2)    
     
 out = torch.zeros(len(ocg), len(o_nijg)).cuda()
   
    
 ### SFP accumulation ###
 for o_nij in o_nijg: 
-    for kij in kijg:  #[0, ... 8]
-        out[:,o_nij] = out[:,o_nij] + \
-        psum[:, int(o_nij/o_ni_dim)*a_pad_ni_dim + o_nij%o_ni_dim + int(kij/ki_dim)*a_pad_ni_dim + kij%ki_dim, kij]
-
+    for kij in kijg:
+        for ic_tile in ic_tileg:    
+            for oc_tile in oc_tileg:   
+                out[oc_tile*array_size:(oc_tile+1)*array_size, o_nij] = out[oc_tile*array_size:(oc_tile+1)*array_size, o_nij] + \
+                psum[ic_tile, oc_tile, :, int(o_nij/o_ni_dim)*a_pad_ni_dim + o_nij%o_ni_dim + int(kij/ki_dim)*a_pad_ni_dim + kij%ki_dim, kij]
+                ## 4th index = (int(o_nij/30)*32 + o_nij%30) + (int(kij/3)*32 + kij%3)
 out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
 # difference = (out_2D - output_int[0,:,:,:])
 # print(difference.abs().sum())
 
+tile_id = 0 
 nij = 0 # just a random number
 print(a_pad.shape)
-X = a_pad[:,nij:nij+8]  # [tile_num, array row num, time_steps]
+X = a_tile[tile_id,:,nij:nij+8]  # [tile_num, array row num, time_steps]
 
-bit_precision = 4
+bit_precision = 2
 file = open(f"{model_name}_{nij}_activation.txt", 'w') #write to file
 file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
 file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
@@ -142,7 +161,7 @@ for i in range(X.size(1)):  # time step
 file.close() #close file    
 
 kij = 0
-W = w_int[:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
+W = w_tile[tile_id,:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
 
 bit_precision = 4
 file = open(f"{model_name}_{kij}_weight.txt", 'w') #write to file
@@ -150,17 +169,17 @@ file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
 file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
 file.write('#................#\n')
 
-for i in range(W.size(1)):  # time step
-    for j in range(W.size(0)): # row #
-        if W[7-j,i] >= 0:
-            W_bin = '{0:04b}'.format(round(W[7-j,i].item()))
+for i in range(W.size(0)):  # column #
+    for j in range(W.size(1)): # row #
+        if W[i,7-j].item() >= 0:
+            W_bin = '{0:04b}'.format(round(W[i,7-j].item()))
         else:
-            W_bin = '{0:04b}'.format(round(W[7-j,i].item()+16))
+            W_bin = '{0:04b}'.format(round(W[i,7-j].item()+16))
         for k in range(bit_precision):
             file.write(W_bin[k])        
-        # file.write(' ')  # for visibility with blank between words, you can use
+        #file.write(' ')  # for visibility with blank between words, you can use
     file.write('\n')
-file.close() #close file    
+file.close() #close file 
 
 ic_tile_id = 0 
 oc_tile_id = 0 
@@ -168,7 +187,7 @@ oc_tile_id = 0
 
 kij = 0
 nij = 2
-PS = psum[:,nij:nij+8,kij]  
+Ps = psum[ic_tile_id,oc_tile_id,:,nij:nij+8,kij] 
 # psum[len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)]
 
 bit_precision = 16
@@ -176,15 +195,15 @@ file = open(f"{model_name}_{nij}_{kij}_psum.txt", 'w') #write to file
 file.write('#time0col7[msb-lsb],time0col6[msb-lst],....,time0col0[msb-lst]#\n')
 file.write('#time1col7[msb-lsb],time1col6[msb-lst],....,time1col0[msb-lst]#\n')
 file.write('#................#\n')
-for i in range(PS.size(1)):  # time step
-    for j in range(PS.size(0)): # row #
-        if PS[7-j,i] >= 0:
-            PS_bin = '{0:016b}'.format(round(PS[7-j,i].item()))
+for i in range(Ps.size(1)):  # time step
+    for j in range(Ps.size(0)): # row #
+        if Ps[7-j,i] >= 0:
+            PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()))
         else:
-            PS_bin = '{0:016b}'.format(round(PS[7-j,i].item()+16))
+            PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()+65536))
         for k in range(bit_precision):
             file.write(PS_bin[k])        
-        # file.write(' ')  # for visibility with blank between words, you can use
+        #file.write(' ')  # for visibility with blank between words, you can use
     file.write('\n')
 file.close() #close file
   
