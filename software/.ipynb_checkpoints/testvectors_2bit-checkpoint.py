@@ -13,7 +13,7 @@ from config import *
 import torchvision
 import torchvision.transforms as transforms
 
-model_name = "VGG16_quant_4bit_base"
+model_name = "VGG16_quant_2bit_base"
 model = VGG16_quant()
 #print(model)
 criterion = nn.CrossEntropyLoss()
@@ -33,7 +33,7 @@ test_dataset = torchvision.datasets.CIFAR10(
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
 trainer = Trainer(model_name,model,criterion,None,None,None,testloader)
-trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_4bit_base/chkpoints_good_87.02.pth")['state_dict'])
+trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_base/chkpoints_good_86.53.pth")['state_dict'])
 print("Validating before we begin")
 trainer.validate(save_weights=False)
 
@@ -49,7 +49,7 @@ print(saves.outputs[0][0].shape,saves.outputs[1][0].shape, trainer.model.feature
 ## Quantizing the input
 act = saves.outputs[0][0]
 act_alpha  = model.features[30].act_alpha
-act_bit = 4
+act_bit = 2
 act_quant_fn = act_quantization(act_bit)
 act_q = act_quant_fn(act, act_alpha)
 act_int = act_q / (act_alpha / (2**act_bit-1))
@@ -134,7 +134,7 @@ file.write('#................#\n')
 
 for i in range(X.size(1)):  # time step
     for j in range(X.size(0)): # row #
-        X_bin = '{0:04b}'.format(round(X[7-j,i].item()))
+        X_bin = '{0:02b}'.format(round(X[7-j,i].item()))
         for k in range(bit_precision):
             file.write(X_bin[k])        
         #file.write(' ')  # for visibility with blank between words, you can use

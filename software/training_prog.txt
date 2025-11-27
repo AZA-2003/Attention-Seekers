@@ -36,3 +36,14 @@ VGG16_quant_2bit_base	Wed Nov 26 00:54:09 2025	86.24
 VGG16_quant_2bit_pt4	Wed Nov 26 02:36:20 2025	60.22
 VGG16_quant_2bit_pt4	Wed Nov 26 04:10:53 2025	58.76
 VGG16_quant_2bit_base	Wed Nov 26 05:16:37 2025	60.89
+VGG16_quant_2bit_base	Wed Nov 26 07:57:46 2025	63.08
+VGG16_quant_2bit_4pt	Wed Nov 26 19:38:33 2025	86.38
+VGG16_quant_2bit_base	Wed Nov 26 20:02:39 2025	86.7
+VGG16_quant_2bit_base	Wed Nov 26 20:43:37 2025	87.21
+VGG16_quant_2bit_base	Wed Nov 26 21:14:56 2025	87.24
+VGG16_quant_4bit_base	Wed Nov 26 21:33:38 2025	86.28
+VGG16_quant_2bit_base	Wed Nov 26 21:52:06 2025	87.22
+VGG16_quant_4bit_base	Wed Nov 26 22:37:00 2025	86.78
+VGG16_quant_2bit_base	Wed Nov 26 22:58:03 2025	87.17
+VGG16_quant_4bit_base	Wed Nov 26 23:54:27 2025	92.56
+VGG16_quant_2bit_base	Thu Nov 27 00:15:33 2025	87.79

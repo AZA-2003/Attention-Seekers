@@ -27,5 +27,11 @@ Note that the layer we are recreating utilizes the following parameter sizes:
 
 Currently it is hitting ~87%  on 4-bit and ~60% on the 2-bit so some tuning will be needed!
 
+Techniques used:
+- Hybrid Scheduler (Warmup + Cosine Annealing) with top lr 2e-2 (20 epochs warmup , 100 cosine annealing)
+- SGD on batch size of 128 with 0.93 momemntum (no weight decay)
+- weight alpha: 8.0 and act alpha: 16.0 (training on 12.0 soon)
+- 
+
 ## Future Improvements
 TBD (currently have a hashed out form of LogQuant)
