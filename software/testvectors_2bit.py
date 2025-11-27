@@ -142,7 +142,7 @@ out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
 
 tile_id = 0 
 nij = 0 # just a random number
-print(a_pad.shape)
+print(a_tile.shape)
 X = a_tile[tile_id,:,nij:nij+8]  # [tile_num, array row num, time_steps]
 
 bit_precision = 2
