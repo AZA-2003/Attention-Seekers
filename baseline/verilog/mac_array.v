@@ -1,6 +1,6 @@
 // Created by prof. Mingu Kang @VVIP Lab in UCSD ECE department
 // Please do not spread this code without permission 
-module mac_array (clk, reset, out_s, in_w, in_n, inst_w, valid);
+module mac_array (clk, reset, out_s, in_w, in_n, ld_mode, inst_w, valid);
 
   parameter bw = 4;
   parameter psum_bw = 16;
@@ -12,6 +12,7 @@ module mac_array (clk, reset, out_s, in_w, in_n, inst_w, valid);
   input  [row*bw-1:0] in_w; // inst[1]:execute, inst[0]: kernel loading
   input  [1:0] inst_w;
   input  [psum_bw*col-1:0] in_n;
+  input  ld_mode;
   output [col-1:0] valid;
 
   reg [2*row-1:0] inst_w_temp;
@@ -39,14 +40,19 @@ module mac_array (clk, reset, out_s, in_w, in_n, inst_w, valid);
    	inst_w_temp <= 0;
    end
    else begin
-	inst_w_temp[1:0] <= inst_w;
-	inst_w_temp[3:2] <= inst_w_temp[1:0];
-	inst_w_temp[5:4] <= inst_w_temp[3:2];
-	inst_w_temp[7:6] <= inst_w_temp[5:4];
-	inst_w_temp[9:8] <= inst_w_temp[7:6];
-	inst_w_temp[11:10] <= inst_w_temp[9:8];
-	inst_w_temp[13:12] <= inst_w_temp[11:10];
-	inst_w_temp[15:14] <= inst_w_temp[13:12];
+    if (!ld_mode) begin
+	    inst_w_temp[1:0] <= inst_w;
+	    inst_w_temp[3:2] <= inst_w_temp[1:0];
+	    inst_w_temp[5:4] <= inst_w_temp[3:2];
+	    inst_w_temp[7:6] <= inst_w_temp[5:4];
+	    inst_w_temp[9:8] <= inst_w_temp[7:6];
+	    inst_w_temp[11:10] <= inst_w_temp[9:8];
+	    inst_w_temp[13:12] <= inst_w_temp[11:10];
+	    inst_w_temp[15:14] <= inst_w_temp[13:12];
+    end
+    else begin
+      inst_w_temp[15:0] <= {2*row{inst_w}};
+    end
    end
  
   end
