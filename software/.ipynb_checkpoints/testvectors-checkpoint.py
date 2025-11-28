@@ -121,7 +121,9 @@ for o_nij in o_nijg:
 out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
 # difference = (out_2D - output_int[0,:,:,:])
 # print(difference.abs().sum())
+print(psum.shape)
 
+'''
 nij = 0 # just a random number
 print(a_pad.shape)
 X = a_pad[:,nij:nij+36]  # [array row num, time_steps]
@@ -166,13 +168,13 @@ for kij in kijg:
 
 # ic_tile_id = 0 
 # oc_tile_id = 0 
-
+'''
 
 # kij = 0
 nij = 0
 bit_precision = 16
 for kij in kijg:
-    Ps = psum[:,nij:nij+8,kij]  
+    Ps = psum[:,nij:nij+36,kij]  
     # psum[len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)]
     
     file = open(f"{model_name}_{nij}_{kij}_psum.txt", 'w') #write to file
@@ -187,7 +189,7 @@ for kij in kijg:
                 PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()+65536))
             for k in range(bit_precision):
                 file.write(PS_bin[k])        
-            file.write(' ')  # for visibility with blank between words, you can use
+            #file.write(' ')  # for visibility with blank between words, you can use
         file.write('\n')
     file.close() #close file
 
