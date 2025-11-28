@@ -158,7 +158,7 @@ module l0_and_mac_array #(
       mac_inst_w <= next_mac_inst_w; 
       mac_inst_counter <= next_mac_inst_counter;
       l0_rd <= next_l0_rd;
-      flush_rd_ptr <= next_flush_rd_ptr;
+      flush_rd_ptr <= 1'b0;
     end
   end
 
