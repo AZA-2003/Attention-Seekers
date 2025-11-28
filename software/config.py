@@ -1,5 +1,11 @@
 SCRIBE = "./training_prog.txt"
 BATCH_SIZE = 128
-EPOCHS = 30
-WARMUP_STEPS = 2
-LR = 4e-4
+EPOCHS = 160
+WARMUP_STEPS = 40
+#WARMUP_STEPS = 3
+#LR = 2e-5
+# LR_4bit = 4e-2
+LR_4bit = 1e-2
+# LR_2bit = 2e-1
+LR_2bit = 1e-2
+WEIGHT_DECAY = 1e-4

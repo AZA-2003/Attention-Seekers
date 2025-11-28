@@ -15,21 +15,21 @@ def weight_quantization(b):
         #print('uniform quant bit: ', b)
         return xhard
     ## Something for an +alpha
-    def log_quant(x,b,a):
-        if x == 0:
-            return 0
-        ## assume no clamping
-        fsr = torch.log2(2*a)
-        minimum = fsr-2**b
-        maximum = fsr-1
-        x_log = torch.round(torch.log2(torch.abs(x)))
-        if x_log < minimum:
-            x_cliplog = 0
-        elif x_log > maximum:
-            x_cliplog = maximum
-        else:
-            x_cliplog = x_log
-        return a*x_cliplog
+    # def log_quant(x,b,a):
+    #     if x == 0:
+    #         return 0
+    #     ## assume no clamping
+    #     fsr = torch.log2(2*a)
+    #     minimum = fsr-2**b
+    #     maximum = fsr-1
+    #     x_log = torch.round(torch.log2(torch.abs(x)))
+    #     if x_log < minimum:
+    #         x_cliplog = 0
+    #     elif x_log > maximum:
+    #         x_cliplog = maximum
+    #     else:
+    #         x_cliplog = x_log
+    #     return a*x_cliplog
         
 
     class _pq(torch.autograd.Function):
@@ -67,7 +67,7 @@ class weight_quantize_fn(nn.Module):
         super(weight_quantize_fn, self).__init__()
         self.w_bit = w_bit-1
         self.weight_q = weight_quantization(b=self.w_bit)
-        self.register_parameter('wgt_alpha', Parameter(torch.tensor(3.0)))
+        self.register_parameter('wgt_alpha', Parameter(torch.tensor(8.0)))
 
     def forward(self, weight):
         mean = weight.data.mean()
@@ -113,9 +113,10 @@ class QuantConv2d(nn.Conv2d):
         super(QuantConv2d, self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups,
                                           bias)
         self.layer_type = 'QuantConv2d'
-        self.bit = 4
-        self.weight_quant = weight_quantize_fn(w_bit=self.bit)
-        self.act_alq = act_quantization(self.bit)
+        self.w_bit = 4
+        self.a_bit = 4
+        self.weight_quant = weight_quantize_fn(w_bit=self.w_bit)
+        self.act_alq = act_quantization(self.a_bit)
         self.act_alpha = torch.nn.Parameter(torch.tensor(16.0))
         self.weight_q  = torch.nn.Parameter(torch.zeros([out_channels, in_channels, kernel_size, kernel_size]))
         
