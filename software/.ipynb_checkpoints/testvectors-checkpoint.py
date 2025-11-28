@@ -124,7 +124,7 @@ out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
 
 nij = 0 # just a random number
 print(a_pad.shape)
-X = a_pad[:,nij:nij+8]  # [tile_num, array row num, time_steps]
+X = a_pad[:,nij:nij+36]  # [array row num, time_steps]
 
 bit_precision = 4
 file = open(f"{model_name}_{nij}_activation.txt", 'w') #write to file
@@ -141,52 +141,55 @@ for i in range(X.size(1)):  # time step
     file.write('\n')
 file.close() #close file    
 
-kij = 0
-W = w_int[:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
-
+#kij = 0
 bit_precision = 4
-file = open(f"{model_name}_{kij}_weight.txt", 'w') #write to file
-file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
-file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
-file.write('#................#\n')
 
-for i in range(W.size(0)):  # column #
-    for j in range(W.size(1)): # row #
-        if W[i,7-j].item() >= 0:
-            W_bin = '{0:04b}'.format(round(W[i,7-j].item()))
-        else:
-            W_bin = '{0:04b}'.format(round(W[i,7-j].item()+16))
-        for k in range(bit_precision):
-            file.write(W_bin[k])        
-        #file.write(' ')  # for visibility with blank between words, you can use
-    file.write('\n')
-file.close() #close file 
+for kij in kijg:
+    W = w_int[:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
 
-ic_tile_id = 0 
-oc_tile_id = 0 
+    file = open(f"{model_name}_{kij}_weight.txt", 'w') #write to file
+    file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
+    file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
+    file.write('#................#\n')
+
+    for i in range(W.size(0)):  # column #
+        for j in range(W.size(1)): # row #
+            if W[i,7-j].item() >= 0:
+                W_bin = '{0:04b}'.format(round(W[i,7-j].item()))
+            else:
+                W_bin = '{0:04b}'.format(round(W[i,7-j].item()+16))
+            for k in range(bit_precision):
+                file.write(W_bin[k])        
+            #file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+    file.close() #close file 
+
+# ic_tile_id = 0 
+# oc_tile_id = 0 
 
 
-kij = 0
-nij = 2
-Ps = psum[:,nij:nij+8,kij]  
-# psum[len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)]
-
+# kij = 0
+nij = 0
 bit_precision = 16
-file = open(f"{model_name}_{nij}_{kij}_psum.txt", 'w') #write to file
-file.write('#time0col7[msb-lsb],time0col6[msb-lst],....,time0col0[msb-lst]#\n')
-file.write('#time1col7[msb-lsb],time1col6[msb-lst],....,time1col0[msb-lst]#\n')
-file.write('#................#\n')
-for i in range(Ps.size(1)):  # time step
-    for j in range(Ps.size(0)): # row #
-        if Ps[7-j,i] >= 0:
-            PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()))
-        else:
-            PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()+65536))
-        for k in range(bit_precision):
-            file.write(PS_bin[k])        
-        file.write(' ')  # for visibility with blank between words, you can use
-    file.write('\n')
-file.close() #close file
+for kij in kijg:
+    Ps = psum[:,nij:nij+8,kij]  
+    # psum[len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)]
+    
+    file = open(f"{model_name}_{nij}_{kij}_psum.txt", 'w') #write to file
+    file.write('#time0col7[msb-lsb],time0col6[msb-lst],....,time0col0[msb-lst]#\n')
+    file.write('#time1col7[msb-lsb],time1col6[msb-lst],....,time1col0[msb-lst]#\n')
+    file.write('#................#\n')
+    for i in range(Ps.size(1)):  # time step
+        for j in range(Ps.size(0)): # row #
+            if Ps[7-j,i] >= 0:
+                PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()))
+            else:
+                PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()+65536))
+            for k in range(bit_precision):
+                file.write(PS_bin[k])        
+            file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+    file.close() #close file
 
 
 ## Write the variables to 4 files for reading..(input, weights, pre-relu output, output)
