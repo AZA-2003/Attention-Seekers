@@ -121,7 +121,7 @@ for o_nij in o_nijg:
 out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
 # difference = (out_2D - output_int[0,:,:,:])
 # print(difference.abs().sum())
-print(psum.shape)
+#print(psum.shape)
 
 '''
 nij = 0 # just a random number
@@ -168,7 +168,7 @@ for kij in kijg:
 
 # ic_tile_id = 0 
 # oc_tile_id = 0 
-'''
+
 
 # kij = 0
 nij = 0
@@ -192,7 +192,55 @@ for kij in kijg:
             #file.write(' ')  # for visibility with blank between words, you can use
         file.write('\n')
     file.close() #close file
+'''
+print(a_pad.shape, out.shape)
+nij = 0 # just a random number
+print(a_pad.shape)
+O = out[:,nij:nij+16]  # [array row num, time_steps]
 
+bit_precision = 16
+file = open(f"{model_name}_{nij}_output_norelu.txt", 'w') #write to file
+file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+file.write('#................#\n')
+
+for i in range(O.size(1)):  # time step
+    for j in range(O.size(0)): # row #
+        if O[7-j,i] >= 0:
+            O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
+        else:
+            O_bin = '{0:016b}'.format(round(O[7-j,i].item()+65536))
+        for k in range(bit_precision):
+            file.write(O_bin[k])        
+        #file.write(' ')  # for visibility with blank between words, you can use
+    file.write('\n')
+file.close() #close file   
+
+print(out)
+
+
+out_relu = F.relu(out)
+print(out_relu)
+nij = 0 # just a random number
+O = out_relu[:,nij:nij+16]  # [array row num, time_steps]
+
+bit_precision = 16
+file = open(f"{model_name}_{nij}_output_relu.txt", 'w') #write to file
+file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+file.write('#................#\n')
+
+for i in range(O.size(1)):  # time step
+    for j in range(O.size(0)): # row #
+        if O[7-j,i] >= 0:
+            O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
+        else:
+            O_bin = '{0:016b}'.format(round(O[7-j,i].item()+65536))
+        for k in range(bit_precision):
+            file.write(O_bin[k])        
+        #file.write(' ')  # for visibility with blank between words, you can use
+    file.write('\n')
+file.close() #close file  
 
 ## Write the variables to 4 files for reading..(input, weights, pre-relu output, output)
 
