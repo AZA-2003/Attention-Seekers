@@ -65,9 +65,8 @@ module mac_tile (clk, out_s, in_w, out_e, in_n, inst_w, inst_e, reset);
       load_ready_q <= 1'b1;
       inst_q <= 0;
     end else begin
-        inst_q <= inst_w;
       if (!os) begin  // WS
-        //inst_q[2:1] <= inst_w[2:1];
+        inst_q[2:1] <= inst_w[2:1];
         if (kflush && load_ready_q) begin
           b_q <= in_w;
           load_ready_q <= 1'b0;
@@ -75,7 +74,7 @@ module mac_tile (clk, out_s, in_w, out_e, in_n, inst_w, inst_e, reset);
           inst_q[0] <= kflush;
         end
       end else begin  // OS
-        // inst_q <= inst_w;
+        inst_q <= inst_w;
         if (execute) b_q <= in_n[bw-1:0];
       end
     end

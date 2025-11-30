@@ -11,7 +11,7 @@ parameter len_onij = 16;
 parameter col = 8;
 parameter row = 8;
 parameter len_nij = 36;
-parameter inst_bw = 38;
+parameter inst_bw = 39;
 parameter ADDR_W = 11;
 
 reg clk = 0;
@@ -53,6 +53,9 @@ reg sfu_relu = 0;
 reg sfu_relu_q = 0;
 reg sfu_relu_2q = 0;
 
+reg os_or_ws = 0;
+reg os_or_ws_q = 0;
+
 reg [1:0]  inst_w; 
 reg [bw*row-1:0] D_xmem;
 reg [psum_bw*col-1:0] answer;
@@ -80,6 +83,8 @@ integer captured_data;
 integer t, i, j, k, kij, m;
 integer error, temp, o_nij;
 integer out_num;
+
+assign inst_q[38] = os_or_ws_q;
 
 assign inst_q[37] = sfu_relu_q;
 assign inst_q[36] = sfu_acc_q;
@@ -125,11 +130,12 @@ initial begin
   l0_wr    = 0;
   execute  = 0;
   load     = 0;
+  os_or_ws = 0;
 
   $dumpfile("core_tb.vcd");
   $dumpvars(0,core_tb);
 
-  x_file = $fopen("./verilog/VGG16_quant_4bit_base_0_activation.txt", "r");
+  x_file = $fopen("./verilog/test_vectors/VGG16_quant_4bit_base_0_activation.txt", "r");
   // Following three lines are to remove the first three comment lines of the file
   x_scan_file = $fscanf(x_file,"%s", captured_data);
   x_scan_file = $fscanf(x_file,"%s", captured_data);
@@ -149,6 +155,11 @@ initial begin
 
   #0.5 clk = 1'b0;   
   #0.5 clk = 1'b1;   
+
+  // Setting Weight/Output Stationary mode
+
+  os_or_ws = 1'b0; // Weight Stationary
+  
   /////////////////////////
 
   /////// Activation data writing to memory ///////
@@ -166,15 +177,15 @@ initial begin
   for (kij=0; kij<9; kij=kij+1) begin  // kij loop
 
     case(kij)
-     0: w_file_name = "./verilog/VGG16_quant_4bit_base_0_weight.txt";
-     1: w_file_name = "./verilog/VGG16_quant_4bit_base_1_weight.txt";
-     2: w_file_name = "./verilog/VGG16_quant_4bit_base_2_weight.txt";
-     3: w_file_name = "./verilog/VGG16_quant_4bit_base_3_weight.txt";
-     4: w_file_name = "./verilog/VGG16_quant_4bit_base_4_weight.txt";
-     5: w_file_name = "./verilog/VGG16_quant_4bit_base_5_weight.txt";
-     6: w_file_name = "./verilog/VGG16_quant_4bit_base_6_weight.txt";
-     7: w_file_name = "./verilog/VGG16_quant_4bit_base_7_weight.txt";
-     8: w_file_name = "./verilog/VGG16_quant_4bit_base_8_weight.txt";
+     0: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_0_weight.txt";
+     1: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_1_weight.txt";
+     2: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_2_weight.txt";
+     3: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_3_weight.txt";
+     4: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_4_weight.txt";
+     5: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_5_weight.txt";
+     6: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_6_weight.txt";
+     7: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_7_weight.txt";
+     8: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_8_weight.txt";
     endcase
     
     w_file = $fopen(w_file_name, "r");
@@ -223,6 +234,7 @@ initial begin
       #0.5 clk = 1'b1;  
     end
 
+    WEN_xmem = 1; CEN_xmem = 1; 
     #0.5 clk = 1'b0;   l0_rd = 0; l0_wr = 0; WEN_xmem = 1;  CEN_xmem = 1;
     #0.5 clk = 1'b1;   
 
@@ -271,7 +283,7 @@ initial begin
       // Writing to l0
       if(A_xmem < len_nij)begin
         WEN_xmem = 1; CEN_xmem = 0;  
-        if(t>0) begin
+        if(t>0 && A_xmem < (len_nij - 1)) begin
           A_xmem = A_xmem + 1;
           l0_wr = 1;
         end 
@@ -327,7 +339,7 @@ initial begin
   
   ////////// Start verification with RELU in parallel //////////
 
-  out_file = $fopen("./verilog/VGG16_quant_4bit_base_0_output_relu.txt", "r");  
+  out_file = $fopen("./verilog/test_vectors/VGG16_quant_4bit_base_0_output_relu.txt", "r");  
 
   // Following three lines are to remove the first three comment lines of the file
   out_scan_file = $fscanf(out_file,"%s", answer); 
@@ -458,6 +470,7 @@ initial begin
 end
 
 always @ (posedge clk) begin
+   os_or_ws_q <= os_or_ws;
    sfu_relu_q <= sfu_relu;
    sfu_relu_2q <= sfu_relu_q;
    sfu_acc_q  <= sfu_acc;

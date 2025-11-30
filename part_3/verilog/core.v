@@ -6,12 +6,12 @@ module core #(
     parameter inst_bw = 39,  // Instruction vector bit-width 
     parameter ADDR_W = 11    // SRAM Address width
 )(
-    input                          clk,
-    input                          reset,
-    input [inst_bw-1:0]            inst,           // 34-bit instruction packet from testbench
-    input [bw*row-1:0]             D_xmem,         // Data written to x-mem by testbench
-    output                         ofifo_valid,    // Write enable for FIFO output
-    output [col*psum_bw-1:0]       sfu_out           // Output feature map
+    input                               clk,
+    input                               reset,
+    input [inst_bw-1:0]                 inst,           // 34-bit instruction packet from testbench
+    input [bw*row-1:0]                  D_xmem,         // Data written to x-mem by testbench
+    output                              ofifo_valid,    // Write enable for FIFO output
+    output signed [col*psum_bw-1:0]     sfu_out           // Output feature map
 );
 
     //wire acc;
@@ -29,6 +29,7 @@ module core #(
     wire os_or_ws;
     wire sfu_relu;
     wire sfu_acc;
+    wire ld_mode;
 
     wire [ADDR_W-1:0] A_pmem;   // bits [30:20]
     wire [ADDR_W-1:0] A_xmem;   // bits [17:7]
@@ -37,7 +38,7 @@ module core #(
 
     assign sfu_relu  = inst[37];
     assign sfu_acc   = inst[36]; 
-    //assign ld_mode   = inst[35];
+    assign ld_mode   = inst[35];
     //assign op_mode   = inst[34];
     //assign acc       = inst[33];
     assign CEN_pmem  = inst[32];
@@ -94,6 +95,7 @@ module core #(
         .clk         (clk),
         .reset       (reset),
 
+        .ld_mode     (ld_mode),
         .l0_in       (l0_in),
         .l0_rd       (l0_rd),
         .l0_wr       (l0_wr),

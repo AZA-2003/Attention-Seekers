@@ -9,6 +9,8 @@ module corelet #(
     input                       clk,        // Clock input
     input                       reset,      // Reset input
 
+    input                       ld_mode,      // Load mode input
+
     input  [bw*row-1:0]         l0_in,      // Input data for ififo
     input                       l0_rd,      // Read enable for ififo
     input                       l0_wr,      // Write enable for ififo
@@ -44,6 +46,7 @@ module corelet #(
     wire [psum_bw*row-1:0]     mac_array_in_n;
     wire [psum_bw*col-1:0]     mac_out_s;
     wire [col-1:0]             mac_valid;
+    wire                       mac_ld_mode;
 
     // OFIFO signals
     wire                       ofifo_full;  // Full flag from ofifo
@@ -63,8 +66,15 @@ module corelet #(
     reg  [col-1:0]             valid_q;
     reg  [psum_bw*col-1:0]     out_s_q;
 
+    /*
     assign l0_ld_mode = !execute;
     assign ififo_ld_mode = !execute;
+    assign mac_ld_mode = !execute;
+    */
+
+    assign l0_ld_mode = ld_mode;
+    assign ififo_ld_mode = ld_mode;
+    assign mac_ld_mode = ld_mode;
 
     ////////// L0 FIFO Instance //////////
 
@@ -129,6 +139,7 @@ module corelet #(
         .reset    (reset),
         .in_w     (l0_out),
         .in_n     (mac_array_in_n),
+        .ld_mode  (mac_ld_mode),
         .out_s    (mac_out_s),
         .inst_w   ({os_or_ws, execute, kflush}),
         .valid    (mac_valid)
