@@ -3,7 +3,7 @@
 module mac (out, a, b0, b1, c, simd);
 
 parameter bw = 4;
-parameter psum_bw = 18; // This needs to be 18 for 2b lane reconfig 
+parameter psum_bw = 16; // This needs to be 16 for 2b lane reconfig 
 
 localparam aw = bw/2;
 localparam simd_bw = psum_bw/2;
@@ -21,8 +21,6 @@ wire signed [aw:0]   a_pad0, a_pad1;
 wire signed [psum_bw-1:0] psum, simd_psum;
 wire signed [psum_bw-1:0] product; // 
 wire signed [2*bw-1:0] shifted_product1; // shifted_product1 left shifts upper product
-wire signed [simd_bw-1:0] psum0, psum1;
-wire signed [simd_bw-1:0] c0, c1;
 
 assign a_pad0 = {1'b0, a[aw-1:0]}; //force unsigned lower activation
 assign a_pad1 = {1'b0, a[2*aw-1:aw]}; //force unsigned upper activation 
@@ -32,13 +30,7 @@ assign product0 = a_pad0 * b0;
 assign product1 = a_pad1 * b1;
 
 // Simd output calculations
-// Upper and lower c, only needed for simd
-assign c0 = c[simd_bw-1:0];
-assign c1 = c[2*simd_bw-1:simd_bw];
-
-assign psum0 = product0 + c0;
-assign psum1 = product1 + c1;
-assign simd_psum = {psum1, psum0};
+assign simd_psum = product1 + product0 + c;
 
 //Regular output calculations from shifted partial products 
 assign shifted_product1 = {product1, {aw{1'b0}}};
