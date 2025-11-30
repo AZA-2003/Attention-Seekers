@@ -33,6 +33,7 @@ module weight_stationary_controller #(
   // SFU control/status
   output reg                      sfu_start,
   input  wire                     sfu_active,
+  output wire                     sfu_active_to_mem,
 
   // Controller status
   output reg                      controller_active,
@@ -97,9 +98,6 @@ module weight_stationary_controller #(
 
   reg [2:0] state, prev_state, next_state, next_prev_state;
 
-  // General String for state name (for debug)
-  reg [8*40-1:0] state_name_str;
-
   // FSM Output Signals
   reg next_l0_rd;
   reg next_l0_wr;
@@ -114,7 +112,8 @@ module weight_stationary_controller #(
   localparam KERNEL_LOAD_TO_MAC = 3'b010;
   localparam ACT_LOAD_TO_L0 = 3'b011;
   localparam MAC_COMPUTE = 3'b100;
-  localparam SFU_PROCESS = 3'b101; 
+  localparam SFU_START = 3'b101; 
+  localparam SFU_PROCESS = 3'b110; 
 
   // Controller active signal
   always @ (posedge clk) begin
@@ -146,7 +145,7 @@ module weight_stationary_controller #(
       next_kij_counter = 0;
     end
     else begin
-      if((state == SFU_PROCESS) && (kij_counter == num_kij_to_compute)) begin
+      if((state == SFU_START) && (kij_counter == num_kij_to_compute)) begin
         next_kij_counter = 0;
       end
       else if (state == MAC_COMPUTE && (gp_counter == 0)) begin
@@ -243,7 +242,7 @@ module weight_stationary_controller #(
             next_prev_state = MAC_COMPUTE;
           end
           else if((gp_counter == (num_nij_to_compute + (2*col) + 2)) && (kij_counter == num_kij_to_compute)) begin
-            next_state = IDLE;
+            next_state = SFU_START;
             // FIXME: Need to start SFU process here instead of going to IDLE directly
           end
           else if((gp_counter == (num_nij_to_compute + (2*col) + 2)) && (kij_counter != num_kij_to_compute)) begin
@@ -251,6 +250,19 @@ module weight_stationary_controller #(
           end
           else begin
             next_state = MAC_COMPUTE;
+          end
+        end
+
+        SFU_START: begin
+          next_state = SFU_PROCESS;
+        end
+
+        SFU_PROCESS: begin
+          if(!sfu_active) begin
+            next_state = IDLE;
+          end
+          else begin
+            next_state = SFU_PROCESS;
           end
         end
 
@@ -502,7 +514,27 @@ module weight_stationary_controller #(
     end
   end
 
+  // SFU start control
+  always @ (posedge clk) begin
+    if (reset) begin
+      sfu_start <= 1'b0;
+    end
+    else begin
+      if(next_state == SFU_START) begin
+        sfu_start <= 1'b1;
+      end
+      else begin
+        sfu_start <= 1'b0;
+      end
+    end
+  end
+
+  assign sfu_active_to_mem = sfu_active || (state == SFU_PROCESS);
+
   `ifndef SYNTHESIS
+    // General String for state name (for debug)
+    reg [8*40-1:0] state_name_str;
+
     always @(*) begin
       case(state)
         3'b000: state_name_str = "IDLE";
@@ -510,7 +542,8 @@ module weight_stationary_controller #(
         3'b010: state_name_str = "KERNEL_LOAD_TO_MAC";
         3'b011: state_name_str = "ACT_LOAD_TO_L0";
         3'b100: state_name_str = "MAC_COMPUTE";
-        3'b101: state_name_str = "SFU_PROCESS";
+        3'b101: state_name_str = "SFU_START";
+        3'b110: state_name_str = "SFU_PROCESS";
         default: state_name_str = "UNKNOWN"; 
       endcase
     end

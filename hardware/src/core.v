@@ -45,6 +45,7 @@ module core #(
 
     // Corelet signals
     wire corelet_sfu_active;
+    wire corelet_sfu_active_to_mem;
     wire [ADDR_W-1:0] corelet_psum_mem_addr;
     wire corelet_psum_mem_wr;
     wire corelet_psum_mem_rd;
@@ -67,9 +68,9 @@ module core #(
     assign activation_weight_mem_load = inst[ADDR_W];
 
     assign A_xmem = wsc_controller_active ? wsc_activation_sram_addr :  inst[ADDR_W-1:0];
-    assign A_pmem = wsc_controller_active ? (corelet_sfu_active ? corelet_psum_mem_addr : wsc_psum_sram_addr) : inst[ADDR_W-1:0];
-    assign WEN_pmem = corelet_sfu_active ?  (corelet_psum_mem_rd) : ~ofifo_rd_q;
-    assign CEN_pmem = corelet_sfu_active ? ~(corelet_psum_mem_rd || corelet_psum_mem_wr) : ~(ofifo_rd_q || psum_memory_rd_enable);
+    assign A_pmem = wsc_controller_active ? (corelet_sfu_active_to_mem ? corelet_psum_mem_addr : wsc_psum_sram_addr) : inst[ADDR_W-1:0];
+    assign WEN_pmem = corelet_sfu_active_to_mem ?  (corelet_psum_mem_rd) : ~ofifo_rd_q;
+    assign CEN_pmem = corelet_sfu_active_to_mem ? ~(corelet_psum_mem_rd || corelet_psum_mem_wr) : ~(ofifo_rd_q || psum_memory_rd_enable);
 
     weight_stationary_controller #(
         .bw(bw),
@@ -106,6 +107,7 @@ module core #(
         // SFU control signals
         .sfu_start(wsc_sfu_start),
         .sfu_active(corelet_sfu_active),
+        .sfu_active_to_mem (corelet_sfu_active_to_mem),
         
         // Controller status output
         .controller_active(wsc_controller_active),
@@ -164,7 +166,7 @@ module core #(
         .psum_mem_rd       (corelet_psum_mem_rd)
     );
 
-    assign ofifo_sram_in = corelet_sfu_active ? corelet_sfu_out : ofifo_out;
+    assign ofifo_sram_in = corelet_sfu_active_to_mem ? corelet_sfu_out : ofifo_out;
 
     ////////// Partial Sum SRAM Instance //////////
 

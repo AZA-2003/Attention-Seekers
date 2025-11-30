@@ -28,6 +28,9 @@ module core_tb;
   reg signed [bw-1:0] weights_to_load [row*col-1:0][num_kij-1:0];
   reg [bw-1:0] activations_to_load [((row + (2*padding))**2)-1:0][ic-1:0];
   reg signed [psum_bw-1:0] expected_psums [num_psums-1:0][oc];
+
+  // Expected outputs after SFU accumulation and RELU: indexed by output o_nij and output channel
+  reg signed [psum_bw-1:0] expected_outputs [num_oij-1:0][oc];
   reg [bw-1:0] actual_weights_loaded [row*col-1:0];
 
   integer i;
@@ -82,6 +85,57 @@ module core_tb;
   end
   endtask
 
+  // Task: calculate expected outputs after SFU accumulation and RELU
+  // Accumulation mapping follows the pattern in the design: accumulate selected psum entries
+  // then apply RELU (zero negative values).
+  task calculate_expected_outputs;
+    integer o_nij, kij, o_ch;
+    integer n_idx;
+    integer idx;
+    // mapping dims (representative constants used in the design)
+    integer o_ni_dim;
+    integer a_pad_ni_dim;
+    integer ki_dim;
+  begin
+    // set mapping dims (these match the values used elsewhere: o_ni_dim=4, a_pad_ni_dim=6, ki_dim=3)
+    o_ni_dim = 4;
+    a_pad_ni_dim = 6;
+    ki_dim = 3;
+
+    // zero outputs
+    for (n_idx = 0; n_idx < num_oij; n_idx = n_idx + 1) begin
+      for (o_ch = 0; o_ch < oc; o_ch = o_ch + 1) begin
+        expected_outputs[n_idx][o_ch] = 0;
+      end
+    end
+
+    // Accumulation: for each output nij and each kernel kij, add the corresponding psum
+    for (o_nij = 0; o_nij < num_oij; o_nij = o_nij + 1) begin
+      for (kij = 0; kij < num_kij; kij = kij + 1) begin
+        // compute source spatial index n according to mapping in the design
+        n_idx = (o_nij / o_ni_dim) * a_pad_ni_dim + (o_nij % o_ni_dim) + (kij / ki_dim) * a_pad_ni_dim + (kij % ki_dim);
+        // compose psum index: psum entries are stored as [kij * num_nij + n]
+        idx = kij * num_nij + n_idx;
+
+        $display("DEBUG | %0t | o_nij=%0d kij=%0d maps to idx=%0d", $time, o_nij, kij, idx);
+        // accumulate across output channels
+        for (o_ch = 0; o_ch < oc; o_ch = o_ch + 1) begin
+          expected_outputs[o_nij][o_ch] = expected_outputs[o_nij][o_ch] + expected_psums[idx][o_ch];
+        end
+      end
+    end
+
+    // RELU: clamp negatives to zero
+    for (n_idx = 0; n_idx < num_oij; n_idx = n_idx + 1) begin
+      for (o_ch = 0; o_ch < oc; o_ch = o_ch + 1) begin
+        if (expected_outputs[n_idx][o_ch] < 0) expected_outputs[n_idx][o_ch] = {psum_bw{1'b0}};
+      end
+    end
+
+    $display("INFO | %0t | Calculated expected outputs after accumulation+RELU for %0d outputs", $time, num_oij);
+  end
+  endtask
+
   // Task: calculate expected psums
   // expected_psums[index][o_ch] where index = k * num_nij + n
   task calculate_expected_psums;
@@ -117,7 +171,7 @@ module core_tb;
   end
   endtask
 
-  // Task: read OFIFO and check outputs against expected_psums
+  // Task: read PSUM memory and check outputs against expected_psums
   task check_expected_psums;
     integer p_idx;
     integer col_idx;
@@ -146,6 +200,39 @@ module core_tb;
 
     // stop read
     $display("INFO  | %0t | Number of psum computation errors = %0d out of a total of %0d", $time, num_errors, num_psums*col);
+    psum_memory_rd_enable = 0;
+  end
+  endtask
+
+  // Task: read PSUM memory and check outputs against expected_psums
+  task check_expected_outputs;
+    integer p_idx;
+    integer col_idx;
+    integer num_errors;
+    reg signed [psum_bw-1:0] actual;
+    reg signed [psum_bw-1:0] expected;
+  begin
+    psum_memory_rd_enable = 1;
+
+    for (p_idx = 0; p_idx < num_oij; p_idx = p_idx + 1) begin
+      // wait for next psum available on OFIFO (synchronous check per posedge)
+      sram_mem_addr = p_idx[ADDR_W-1:0];
+      @(posedge clk);
+      for (col_idx = 0; col_idx < col; col_idx = col_idx + 1) begin
+        actual = psum_mem_out[(col_idx+1)*psum_bw-1 -: psum_bw];
+        expected = expected_outputs[p_idx][col_idx];
+        if (actual !== expected) begin
+          $display("ERROR | %0t | Output computation not matching for idx=%0d col=%0d: actual=0x%0h expected=0x%0h", $time, p_idx, col_idx, actual, expected);
+          num_errors = num_errors + 1;
+        end
+        else begin
+          $display("INFO  | %0t | Output computation matching for idx=%0d col=%0d: actual=0x%0h", $time, p_idx, col_idx, actual);
+        end
+      end
+    end
+
+    // stop read
+    $display("INFO  | %0t | Number of output computation errors = %0d out of a total of %0d", $time, num_errors, num_oij*col);
     psum_memory_rd_enable = 0;
   end
   endtask
@@ -399,6 +486,7 @@ module core_tb;
     initialize_weights();
     initialize_activations();
     calculate_expected_psums();
+    calculate_expected_outputs();
 
     // Writing all weights
     for(i = 0; i < num_kij; i = i + 1) begin
@@ -415,8 +503,11 @@ module core_tb;
 
     wait(core_busy == 0);
 
+    repeat (2) @(posedge clk);
+
     // Read and check expected psums
-    check_expected_psums();
+    //check_expected_psums();
+    check_expected_outputs();
     
     // TB Drain time
     repeat (2) @(posedge clk);

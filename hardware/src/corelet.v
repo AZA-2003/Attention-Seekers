@@ -79,19 +79,21 @@ module corelet #(
     );
 
     ////////// SFU Instance //////////
-    /*
     sfu_array #(
-        .psum_bw(psum_bw)
-    ) sfu_inst (
-        .clk            (clk),
-        .reset          (reset),
-        .sfu_valid_in   (valid_q),
-        .sfu_in         (out_s_q),
-        .sfu_valid_out  (sfu_valid_out),
-        .sfu_out        (sfu_out)
+        .col(col),
+        .psum_bw(psum_bw),
+        .ADDR_W(ADDR_W)
+    ) dut (
+        .clk(clk),
+        .reset(reset),
+        .start_sfu(sfu_start),
+        .sfu_in(sfu_in),
+        .sfu_out(sfu_out),
+        .psum_mem_addr(psum_mem_addr),
+        .psum_mem_rd_enable(psum_mem_rd),
+        .psum_mem_wr_enable(psum_mem_wr),
+        .sfu_active(sfu_active)
     );
-    */
-
     ////////// OFIFO Instance //////////
 
     ofifo #(
@@ -109,14 +111,5 @@ module corelet #(
         .o_ready  (ofifo_ready),
         .o_valid  (ofifo_valid)
     );
-
-    // Tie SFU outputs/controls to default values if SFU is not instantiated
-    assign sfu_out = 'b0;
-    assign sfu_active = 1'b0;
-
-    // PSUM memory control signals default to 0 (hook up SFU or corelet logic to drive these)
-    assign psum_mem_addr = {ADDR_W{1'b0}};
-    assign psum_mem_wr = 1'b0;
-    assign psum_mem_rd = 1'b0;
 
 endmodule
