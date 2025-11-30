@@ -148,13 +148,13 @@ mac_tile #(.bw(bw), .psum_bw(psum_bw)) dut (
     //flush, in_n 511, out_s = 8
     // inst_w[1] = 0;
     inst_w[0] = 1;
-    in_n = 511;
+    in_n = 0;
 
     #10
     // flush out_s = 511, in_n = -200
-    in_n = -200;
+    in_n = 0;
 
-    #20;
+    #20; #20; #20; #20;
     $finish;
   end
 
