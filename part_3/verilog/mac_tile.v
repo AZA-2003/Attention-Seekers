@@ -24,7 +24,7 @@ module mac_tile (clk, out_s, in_w, out_e, in_n, inst_w, inst_e, reset);
   wire os, execute, kflush;
   assign os = inst_w[2];
   assign execute = inst_w[1];
-  assign kflush = inst_w[0];
+  assign kflush = inst_w[0]; // kernel load in WS/ flush in OS
 
   reg load_ready_q;
   reg [2:0] inst_q;
