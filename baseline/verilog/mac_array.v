@@ -1,5 +1,5 @@
 // Created by prof. Mingu Kang @VVIP Lab in UCSD ECE department
-// Please do not spread this code without permission 
+// Please do not spread this code without permission
 module mac_array (clk, reset, out_s, in_w, in_n, ld_mode, inst_w, valid);
 
   parameter bw = 4;
@@ -54,7 +54,7 @@ module mac_array (clk, reset, out_s, in_w, in_n, ld_mode, inst_w, valid);
       inst_w_temp[15:0] <= {2*row{inst_w}};
     end
    end
- 
+
   end
 
   assign out_s = temp[((psum_bw*col*(row+1))-1):(psum_bw*col*row)];

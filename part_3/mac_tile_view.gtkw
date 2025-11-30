@@ -1,0 +1,36 @@
+[*]
+[*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
+[*] Sun Nov 30 06:07:38 2025
+[*]
+[dumpfile] "/home/linux/ieng6/ECE284_FA25_A00/skarkhanis/Attention-Seekers/part_3/mac_tile_tb.vcd"
+[dumpfile_mtime] "Sun Nov 30 06:02:26 2025"
+[dumpfile_size] 3235
+[savefile] "/home/linux/ieng6/ECE284_FA25_A00/skarkhanis/Attention-Seekers/part_3/mac_tile_view.gtkw"
+[timestart] 0
+[size] 1920 977
+[pos] -1 -1
+*-15.171558 170100 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] mac_tile_tb.
+[sst_width] 229
+[signals_width] 227
+[sst_expanded] 1
+[sst_vpaned_height] 270
+@28
+mac_tile_tb.dut.clk
+mac_tile_tb.dut.reset
+mac_tile_tb.dut.os
+mac_tile_tb.dut.execute
+mac_tile_tb.dut.kflush
+@22
+mac_tile_tb.dut.in_w[3:0]
+mac_tile_tb.dut.a_q[3:0]
+@420
+mac_tile_tb.dut.b_q[3:0]
+@421
+mac_tile_tb.dut.out_s[15:0]
+@420
+mac_tile_tb.dut.c_q[15:0]
+mac_tile_tb.dut.mac_out[15:0]
+mac_tile_tb.dut.in_n[15:0]
+[pattern_trace] 1
+[pattern_trace] 0

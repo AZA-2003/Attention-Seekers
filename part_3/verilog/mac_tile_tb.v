@@ -1,23 +1,23 @@
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 module mac_tile_tb;
 
-parameter bw = 4;
-parameter psum_bw = 16;
+  parameter bw = 4;
+  parameter psum_bw = 16;
 
-reg clk, reset;
-reg  [bw-1:0] in_w;
-reg  [psum_bw-1:0] in_n;
-reg  [2:0] inst_w;
+  reg clk, reset;
+  reg [bw-1:0] in_w;
+  reg [psum_bw-1:0] in_n;
+  reg [2:0] inst_w;
 
-wire [psum_bw-1:0] out_s;
-wire [bw-1:0] out_e;
-wire [2:0] inst_e;
+  wire [psum_bw-1:0] out_s;
+  wire [bw-1:0] out_e;
+  wire [2:0] inst_e;
 
-// DUT
+  // DUT
+  // verilog_format: off
 mac_tile #(.bw(bw), .psum_bw(psum_bw)) dut (
-    .clk(clk),
-    .reset(reset),
+    .clk(clk), .reset(reset),
     .in_w(in_w),
     .out_e(out_e),
     .in_n(in_n),
@@ -25,15 +25,16 @@ mac_tile #(.bw(bw), .psum_bw(psum_bw)) dut (
     .inst_e(inst_e),
     .out_s(out_s)
 );
+// verilog_format: on
 
-// ==== CLOCK ====
-always #5 clk = ~clk;
+  // ==== CLOCK ====
+  always #5 clk = ~clk;
 
-// ==== TEST SEQUENCE ====
-initial begin
+  // ==== TEST SEQUENCE ====
+  initial begin
 
     $dumpfile("mac_tile_tb.vcd");
-    $dumpvars(0,mac_tile_tb);
+    $dumpvars(0, mac_tile_tb);
 
     clk = 0;
     reset = 1;
@@ -53,7 +54,7 @@ initial begin
     $display("NON-SIMD mode");
     $display("\n--- LOAD WEIGHT #1 (non-SIMD) ---");
     in_w = 4'd3;
-    inst_w[1:0] = 2'b01; // non simd, ex=0, load weight = 1
+    inst_w[1:0] = 2'b01;  // non simd, ex=0, load weight = 1
     // #10 inst_w = 0;
 
     #10;
@@ -82,8 +83,8 @@ initial begin
     // weight = previously loaded = 5
     // -----------------------------------------
     $display("\n--- EXECUTE ---");
-    in_w = 4'd2;       // activation
-    in_n = 16'd10;     // psum input
+    in_w        = 4'd2;  // activation
+    in_n        = 16'd10;  // psum input
     inst_w[1:0] = 2'b10;
     // #10 inst_w[1:0] = 0;
 
@@ -91,8 +92,8 @@ initial begin
     $display("out_s = %0d (expected 3*2 + 10 = 16)");
 
     $display("\n--- EXECUTE ---");
-    in_w = 4'd3;       // activation
-    in_n = 16'd5;     // psum input
+    in_w        = 4'd3;  // activation
+    in_n        = 16'd5;  // psum input
     inst_w[1:0] = 2'b10;
     // #10 inst_w = 0;
 
@@ -102,13 +103,12 @@ initial begin
 
     /// OS
     $display("\n Output stationary");
-    reset = 1;
-    in_n = 0;
-    in_w = 0;
+    reset  = 1;
+    in_n   = 0;
+    in_w   = 0;
     inst_w = 0;
 
-    #20
-    reset = 0;
+    #20 reset = 0;
     inst_w[2] = 1;
     // execute, w = 2, a = 4, psum 8
     inst_w[1] = 1;
@@ -134,8 +134,8 @@ initial begin
     in_n = 0;
 
     #10
-    // Wait 
-    inst_w[1] = 0; // empty
+    // Wait
+    inst_w[1] = 0;  // empty
 
     //wait
     #10
@@ -143,21 +143,19 @@ initial begin
     #10
     //wait
     #10
-
-
 
     #10
     //flush, in_n 511, out_s = 8
     // inst_w[1] = 0;
     inst_w[0] = 1;
-    in_n = 511;
+    in_n = 0;
 
     #10
     // flush out_s = 511, in_n = -200
-    in_n = -200;
+    in_n = 0;
 
-    #20;
+    #20; #20; #20; #20;
     $finish;
-end
+  end
 
 endmodule
