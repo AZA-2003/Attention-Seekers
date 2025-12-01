@@ -15,13 +15,13 @@ def weight_quantization(b):
         #print('uniform quant bit: ', b)
         return xhard
     def learned_step_quant(x,b):
-        xhard = (x.clamp(min=-2**b, max=2**(b)-1)).floor()
+        xhard = (x.clamp(min=-2**b, max=2**(b-1)-1)).floor()
         return xhard
         
         
     class _pq(torch.autograd.Function):
         @staticmethod
-        def forward(ctx, input, alpha):
+        def forward(ctx, input, alpha, O):
             # input.div_(alpha)                          # weights are first divided by alpha
             # input_c = input.clamp(min=-1, max=1)       # then clipped to [-1,1]
             # sign = input_c.sign()
@@ -32,9 +32,10 @@ def weight_quantization(b):
             # return input_q
             eps = 1e-6 # avoid zero division
             input_div = input.div(alpha+eps)
-            input_q = learned_step_quant(input_div,b)
-            input_q = input_q.mul(alpha)          # rescale to the original range
-            ctx.save_for_backward(input, input_div, input_q, alpha)
+            input_O = input_div @ O 
+            input_q = learned_step_quant(input_O,b)
+            ctx.save_for_backward(input, input_div, input_q, alpha, O)
+            input_q = (input_q @ O.T).mul(alpha)          # rescale to the original range
             return input_q
 
         @staticmethod
@@ -51,12 +52,13 @@ def weight_quantization(b):
             # #             if i = False, "grad_alpha = grad_output * (input_q-input)"
             # grad_input = grad_input*(1-i)
             # return grad_input, grad_alpha
-            input, input_div, input_q, alpha = ctx.saved_tensors
-            i = ((input_div < -2**(b)) | (input_div > 2**(b)-1)).float()
+            input, input_div, input_q, alpha, O = ctx.saved_tensors
+            i = ((input_div < -2**(b)) | (input_div > 2**(b-1)-1)).float()
             sign = input_div.sign()    
-            grad_input = ((grad_input*(1-i)))
-            grad_alpha = (grad_output*(i*learned_step_quant(input.div(alpha),b)+(1-i)*(learned_step_quant(input.div(alpha),b)-input.div(alpha)))).sum() * (1/np.sqrt((2**(b)-1)*input_div.numel()))
-            return grad_input, grad_alpha
+            grad_input = (alpha * (grad_input*(1-i))) @ (O.T)
+            grad_alpha = (grad_output*(i*learned_step_quant(input.div(alpha),b)+(1-i)*(learned_step_quant(input.div(alpha),b)-input.div(alpha)))).sum() * (1/np.sqrt((2**(b-1)-1)*input_div.numel()))
+            grad_O = ((input_q.mT) @ grad_output) + ((1-i)*input.mT)
+            return grad_input, grad_alpha, grad_O
 
     return _pq().apply
 
@@ -70,10 +72,11 @@ class weight_quantize_fn(nn.Module):
         self.register_parameter('wgt_alpha', Parameter(torch.tensor(1.0)))
 
     def forward(self, weight):
+        self.register_parameter('wgt_O',Parameter(torch.eye(weight.data.shape[2])))
         mean = weight.data.mean()
         std = weight.data.std()
         weight = weight.add(-mean).div(std)      # weights normalization
-        weight_q = self.weight_q(weight, self.wgt_alpha)
+        weight_q = self.weight_q(weight, self.wgt_alpha, self.wgt_O.cuda())
         
         return weight_q
 
@@ -92,35 +95,23 @@ def act_quantization(b):
         @staticmethod
         def forward(ctx, input, alpha):
             eps = 1e-6 # avoid zero division
-            # print(alpha)
-            n = input.shape[2]
-            # print(input)
-            hadamard2 = torch.tensor([[1.0,1.0],[1.0,-1.0]]) * (1/np.sqrt(2))
-            hadamard4 = torch.tensor([[1.0,1.0,1.0,1.0],[1.0,-1.0,1.0,-1.0],[1.0,1.0,-1.0,-1.0],[1.0,-1.0,-1.0,1.0]]) * (1/np.sqrt(2))
-            if n > 4:
-                hadamard_4l = [hadamard4]*(n//4)
-                hadamard = torch.block_diag(*hadamard_4l).cuda()
-            else:
-                hadamard_2l = [hadamard2]*(n//2)
-                hadamard = torch.block_diag(*hadamard_2l).cuda()
-            input_had = input @ hadamard
-            input_div = input_had.div(alpha+eps)
+            input_div = input.div(alpha+eps)
             input_q = learned_step_quant(input_div,b)
             # print(input_q)
             # exit()
-            ctx.save_for_backward(input, input_div, input_q, hadamard, alpha)
-            input_q = (input_q @ (hadamard.T)).mul(alpha)
+            ctx.save_for_backward(input, input_div, input_q, alpha)
+            input_q = input_q.mul(alpha)
             return input_q
 
         @staticmethod
         def backward(ctx, grad_output):
             grad_input = grad_output.clone()  # grad for weights will not be clipped
-            input, input_div, input_q, hadamard, alpha = ctx.saved_tensors
+            input, input_div, input_q, alpha = ctx.saved_tensors
             i = ((input_div < 0) | (input_div > 2**(b)-1)).float()
             sign = input_div.sign()    
-            grad_input = (1-i) *(grad_input @ (hadamard.T))
+            grad_input = (alpha * (grad_input*(1-i)))
             # grad_alpha = (grad_output*i*learned_step_quant(input.div(alpha),b)).sum() * (1/np.sqrt((2**(b)-1)*input_div.numel()))
-            grad_alpha = (grad_output*(i*input_q)+(1-i)*(input_q-input.div(alpha))).sum() * (1/np.sqrt((2**b-1)*input_div.numel()))
+            grad_alpha = (grad_output*(i*input_q)+(1-i)*(input_q-input.div(alpha))).sum() * (1/np.sqrt((2**(b-1)-1)*input_div.numel()))
             # print(input_div)
             # exit()
             return grad_input, grad_alpha
@@ -128,9 +119,9 @@ def act_quantization(b):
     return _uq().apply
 
 
-class RotaQuantConv2d(nn.Conv2d):
+class RotaQuantConv2d2(nn.Conv2d):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=False):
-        super(RotaQuantConv2d, self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups,
+        super(RotaQuantConv2d2, self).__init__(in_channels, out_channels, kernel_size, stride, padding, dilation, groups,
                                           bias)
         self.layer_type = 'RotaQuantConv2d'
         self.w_bit = 4

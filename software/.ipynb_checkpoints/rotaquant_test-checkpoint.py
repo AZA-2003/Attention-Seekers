@@ -8,7 +8,7 @@ import torch.backends.cudnn as cudnn
 
 import torchvision
 import torchvision.transforms as transforms
-from model_trainer import *
+from rq_model_trainer import *
 from models import *
 from config import *
 from orchid_optim import *
@@ -21,9 +21,10 @@ print("Setting up Model..")
 # model = VGG16_quant()
 ## 4-bit modle base for 2-bit training
 model_name = "VGG16_rotaq_4bit"
-model = VGG16_rotaq()
+model = VGG16_rotaqv2()
 #print(model)
 criterion =  nn.CrossEntropyLoss()
+#+sum([torch.linalg.matrix_norm(l.weight_quant.wgt_O)] for l in model.features if isinstance(l,RotaQuantConv2d))
 
 print("Preparing Data..")
 normalize = transforms.Normalize(mean=[0.491, 0.482, 0.447], std=[0.247, 0.243, 0.262])
@@ -51,7 +52,7 @@ test_dataset = torchvision.datasets.CIFAR10(
 
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE_r, shuffle=False, num_workers=2)
 os.makedirs("./results",exist_ok=True)
-os.makedirs(f"./results/{model_name}",exist_ok=True)
+os.makedirs(f"./results/{model_name}_{PRUNE_PERC}",exist_ok=True)
 
 print("Setting up optimizers..")
 ## Orchid optimizer

@@ -242,12 +242,13 @@ nij = 0
 bit_precision = 16
 for tile_id in range(2):
     O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
+    print(O.shape)
     file = open(f"{model_name}__{tile_id}_{nij}_output_norelu.txt", 'w') #write to file
     file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
     file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
     file.write('#................#\n')
     for i in range(O.size(1)):  # time step
-        for j in range(O.size(0)//2): # row #
+        for j in range(O.size(0)): # row #
             if O[7-j,i] >= 0:
                 O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
             else:
@@ -259,6 +260,8 @@ for tile_id in range(2):
     file.close() #close file   
 # print(out)
 
+nij = 0
+bit_precision = 16
 out_relu = F.relu(out)
 # print(out_relu)
 for tile_id in range(2):
@@ -268,7 +271,7 @@ for tile_id in range(2):
     file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
     file.write('#................#\n')
     for i in range(O.size(1)):  # time step
-        for j in range(O.size(0)//2): # row #
+        for j in range(O.size(0)): # row #
             if O[7-j,i] >= 0:
                 O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
             else:

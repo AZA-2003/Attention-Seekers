@@ -15,48 +15,48 @@ def weight_quantization(b):
         #print('uniform quant bit: ', b)
         return xhard
     def learned_step_quant(x,b):
-        xhard = (x.clamp(min=-2**b, max=2**(b-1)-1)).floor()
+        xhard = (x.clamp(min=-2**b, max=2**(b)-1)).floor()
         return xhard
         
         
     class _pq(torch.autograd.Function):
         @staticmethod
         def forward(ctx, input, alpha):
-            input.div_(alpha)                          # weights are first divided by alpha
-            input_c = input.clamp(min=-1, max=1)       # then clipped to [-1,1]
-            sign = input_c.sign()
-            input_abs = input_c.abs()
-            input_q = uniform_quant(input_abs, b).mul(sign)
-            ctx.save_for_backward(input, input_q)
-            input_q = input_q.mul(alpha)               # rescale to the original range
-            return input_q
-            # eps = 1e-6 # avoid zero division
-            # input_div = input.div(alpha+eps)
-            # input_q = learned_step_quant(input_div,b)
-            # input_q = input_q.mul(alpha)          # rescale to the original range
-            # ctx.save_for_backward(input, input_div, input_q, alpha)
+            # input.div_(alpha)                          # weights are first divided by alpha
+            # input_c = input.clamp(min=-1, max=1)       # then clipped to [-1,1]
+            # sign = input_c.sign()
+            # input_abs = input_c.abs()
+            # input_q = uniform_quant(input_abs, b).mul(sign)
+            # ctx.save_for_backward(input, input_q)
+            # input_q = input_q.mul(alpha)               # rescale to the original range
             # return input_q
+            eps = 1e-6 # avoid zero division
+            input_div = input.div(alpha+eps)
+            input_q = learned_step_quant(input_div,b)
+            input_q = input_q.mul(alpha)          # rescale to the original range
+            ctx.save_for_backward(input, input_div, input_q, alpha)
+            return input_q
 
         @staticmethod
         def backward(ctx, grad_output):
             grad_input = grad_output.clone()   # grad for weights will not be clipped
-            input, input_q = ctx.saved_tensors
-            i = (input.abs()>1.).float()     
-            # >1 means clipped. # output matrix is a form of [True, False, True, ...]
-            sign = input.sign()              
-            # output matrix is a form of [+1, -1, -1, +1, ...]
-            #grad_alpha = (grad_output*(sign*i + (input_q-input)*(1-i))).sum()
-            grad_alpha = (grad_output*(sign*i + (0.0)*(1-i))).sum()
-            # above line, if i = True,  and sign = +1, "grad_alpha = grad_output * 1"
-            #             if i = False, "grad_alpha = grad_output * (input_q-input)"
-            grad_input = grad_input*(1-i)
-            return grad_input, grad_alpha
-            # input, input_div, input_q, alpha = ctx.saved_tensors
-            # i = ((input_div < -2**(b)) | (input_div > 2**(b-1)-1)).float()
-            # sign = input_div.sign()    
-            # grad_input = (alpha * (grad_input*(1-i)))
-            # grad_alpha = (grad_output*(i*learned_step_quant(input.div(alpha),b)+(1-i)*(learned_step_quant(input.div(alpha),b)-input.div(alpha)))).sum() * (1/np.sqrt((2**(b-1)-1)*input_div.numel()))
+            # input, input_q = ctx.saved_tensors
+            # i = (input.abs()>1.).float()     
+            # # >1 means clipped. # output matrix is a form of [True, False, True, ...]
+            # sign = input.sign()              
+            # # output matrix is a form of [+1, -1, -1, +1, ...]
+            # #grad_alpha = (grad_output*(sign*i + (input_q-input)*(1-i))).sum()
+            # grad_alpha = (grad_output*(sign*i + (0.0)*(1-i))).sum()
+            # # above line, if i = True,  and sign = +1, "grad_alpha = grad_output * 1"
+            # #             if i = False, "grad_alpha = grad_output * (input_q-input)"
+            # grad_input = grad_input*(1-i)
             # return grad_input, grad_alpha
+            input, input_div, input_q, alpha = ctx.saved_tensors
+            i = ((input_div < -2**(b)) | (input_div > 2**(b)-1)).float()
+            sign = input_div.sign()    
+            grad_input = ((grad_input*(1-i)))
+            grad_alpha = (grad_output*(i*learned_step_quant(input.div(alpha),b)+(1-i)*(learned_step_quant(input.div(alpha),b)-input.div(alpha)))).sum() * (1/np.sqrt((2**(b)-1)*input_div.numel()))
+            return grad_input, grad_alpha
 
     return _pq().apply
 
@@ -66,8 +66,8 @@ class weight_quantize_fn(nn.Module):
         super(weight_quantize_fn, self).__init__()
         self.w_bit = w_bit-1
         self.weight_q = weight_quantization(b=self.w_bit)
-        self.register_parameter('wgt_alpha', Parameter(torch.tensor(8.0)))
-        #self.register_parameter('wgt_alpha', Parameter(torch.tensor(1.0)))
+        #self.register_parameter('wgt_alpha', Parameter(torch.tensor(8.0)))
+        self.register_parameter('wgt_alpha', Parameter(torch.tensor(1.0)))
 
     def forward(self, weight):
         mean = weight.data.mean()
@@ -118,9 +118,9 @@ def act_quantization(b):
             input, input_div, input_q, hadamard, alpha = ctx.saved_tensors
             i = ((input_div < 0) | (input_div > 2**(b)-1)).float()
             sign = input_div.sign()    
-            grad_input = (alpha * (grad_input*(1-i))) @ hadamard
+            grad_input = (1-i) *(grad_input @ (hadamard.T))
             # grad_alpha = (grad_output*i*learned_step_quant(input.div(alpha),b)).sum() * (1/np.sqrt((2**(b)-1)*input_div.numel()))
-            grad_alpha = (grad_output*(i*input_q)+(1-i)*(input_q-input.div(alpha))).sum() * (1/np.sqrt((2**(b-1)-1)*input_div.numel()))
+            grad_alpha = (grad_output*(i*input_q)+(1-i)*(input_q-input.div(alpha))).sum() * (1/np.sqrt((2**b-1)*input_div.numel()))
             # print(input_div)
             # exit()
             return grad_input, grad_alpha
