@@ -229,8 +229,49 @@ for kij in kijg:
                 file.write(' ')  # for visibility with blank between words, you can use
             file.write('\n')
         file.close() #close file
-print(psum2[0,:,:,0])
 
+# O = out[:,nij:nij+16]  # [array row num, time_steps]
+# print(O.shape)
+# exit()
+bit_precision = 16
+for tile_id in range(2):
+    O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
+    file = open(f"{model_name}__{tile_id}_{nij}_output_norelu.txt", 'w') #write to file
+    file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+    file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+    file.write('#................#\n')
+    for i in range(O.size(1)):  # time step
+        for j in range(O.size(0)//2): # row #
+            if O[7-j,i] >= 0:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
+            else:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()+65536))
+            for k in range(bit_precision):
+                file.write(O_bin[k])        
+            #file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+    file.close() #close file   
+print(out)
+
+out_relu = F.relu(out)
+print(out_relu)
+for tile_id in range(2):
+    O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
+    file = open(f"{model_name}__{tile_id}_{nij}_output_relu.txt", 'w') #write to file
+    file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+    file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+    file.write('#................#\n')
+    for i in range(O.size(1)):  # time step
+        for j in range(O.size(0)//2): # row #
+            if O[7-j,i] >= 0:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
+            else:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()+65536))
+            for k in range(bit_precision):
+                file.write(O_bin[k])        
+            #file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+    file.close() #close file   
 
 ## Write the variables to 4 files for reading..(input, weights, pre-relu output, output)
 
