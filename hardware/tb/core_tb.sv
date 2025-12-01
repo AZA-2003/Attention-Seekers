@@ -44,7 +44,7 @@ module core_tb;
   wire [ADDR_W-1:0] activation_start_sram_addr;
 
   assign weight_start_sram_addr = '0;
-  assign activation_start_sram_addr = 8 * row; // after weights
+  assign activation_start_sram_addr = 9 * row; // after weights
 
   wire core_busy;
 
@@ -82,6 +82,118 @@ module core_tb;
     @(posedge clk);
     reset = 0;
     @(posedge clk);
+  end
+  endtask
+
+  // Task: initialize activations_to_load from a file
+  // File format: lines with 32-bit binary strings (e.g. 00110011...), one line per spatial index (n).
+  // Each 32-bit line packs eight 4-bit entries: timeNrow7[msb] ... timeNrow0[lsb]
+  task initialize_activations_from_file(input string filename);
+    integer fd;
+    string line;
+    integer n_idx;
+    integer c;
+    reg [31:0] word32;
+    reg [3:0] nibble;
+    integer rc;
+  begin
+    fd = $fopen(filename, "r");
+    if (fd == 0) begin
+      $display("ERROR | %0t | Cannot open activation file %s", $time, filename);
+      $finish;
+    end
+
+    n_idx = 0;
+    // read until we've filled `num_nij` spatial entries or EOF
+    while (!$feof(fd) && n_idx < num_nij) begin
+      line = "";
+      rc = $fgets(line, fd);
+      if (rc <= 0) begin
+        // nothing read
+        continue;
+      end
+      // try to parse a binary token from the line; skip comment/empty lines
+      if ($sscanf(line, "%b", word32) != 1) begin
+        // not a binary line (probably a comment) -> skip
+        continue;
+      end
+
+      // word32 now contains 32-bit string MSB..LSB; extract 4-bit nibbles
+      // and map them into activations_to_load[n_idx][channel]
+      for (c = 0; c < ic; c = c + 1) begin
+        // follow same ordering as other loaders: MSB nibble maps to channel 0
+        nibble = (word32 >> ((row - 1 - c) * 4)) & 4'hF;
+        activations_to_load[n_idx][c] = nibble[bw-1:0];
+      end
+
+      n_idx = n_idx + 1;
+    end
+
+    $fclose(fd);
+    $display("INFO | %0t | Loaded activations from %s into %0d spatial entries (lines read=%0d)", $time, filename, n_idx, n_idx);
+  end
+  endtask
+
+  // Task: initialize weights_to_load from a file for one kij index
+  // File format: lines with 32-bit binary strings (e.g. 00110011...), one line per column.
+  // Each 32-bit line packs eight 4-bit entries: colXrow7[msb] ... colXrow0[lsb]
+  task initialize_weights_from_file(input integer kij_idx);
+    integer fd;
+    string line;
+    integer col_idx;
+    integer r;
+    reg [31:0] word32;
+    reg [3:0] nibble;
+    integer rc;
+  begin
+    string filename;
+
+    case(kij_idx)
+      0: filename = "./test_vectors/VGG16_quant_4bit_base_0_weight.txt";
+      1: filename = "./test_vectors/VGG16_quant_4bit_base_1_weight.txt";
+      2: filename = "./test_vectors/VGG16_quant_4bit_base_2_weight.txt";
+      3: filename = "./test_vectors/VGG16_quant_4bit_base_3_weight.txt";
+      4: filename = "./test_vectors/VGG16_quant_4bit_base_4_weight.txt";
+      5: filename = "./test_vectors/VGG16_quant_4bit_base_5_weight.txt";
+      6: filename = "./test_vectors/VGG16_quant_4bit_base_6_weight.txt";
+      7: filename = "./test_vectors/VGG16_quant_4bit_base_7_weight.txt";
+      8: filename = "./test_vectors/VGG16_quant_4bit_base_8_weight.txt";
+    endcase
+
+    fd = $fopen(filename, "r");
+    if (fd == 0) begin
+      $display("ERROR | %0t | Cannot open weight file for kij=%0d", $time, kij_idx);
+      $finish;
+    end
+
+    col_idx = 0;
+    // read until we've filled `col` columns or EOF
+    while (!$feof(fd) && col_idx < col) begin
+      line = "";
+      rc = $fgets(line, fd);
+      if (rc <= 0) begin
+        // nothing read
+        continue;
+      end
+      // try to parse a binary token from the line; skip comment/empty lines
+      if ($sscanf(line, "%b", word32) != 1) begin
+        // not a binary line (probably a comment) -> skip
+        continue;
+      end
+
+      // word32 now contains 32-bit string MSB..LSB; extract 4-bit nibbles
+      for (r = 0; r < row; r = r + 1) begin
+        // map nibble: top-most nibble corresponds to row = row-1
+        nibble = (word32 >> ((row - 1 - r) * 4)) & 4'hF;
+        // place into weights_to_load using same linearization used elsewhere (col-major then row)
+        weights_to_load[col_idx * col + r][kij_idx] = nibble[bw-1:0];
+      end
+
+      col_idx = col_idx + 1;
+    end
+
+    $fclose(fd);
+    $display("INFO | %0t | Loaded weights from %s into kij=%0d (columns read=%0d)", $time, filename, kij_idx, col_idx);
   end
   endtask
 
@@ -365,7 +477,7 @@ module core_tb;
       end
       D_xmem = packed_row;
       if(weight_or_activation == 0) begin
-        addr = weight_start_sram_addr + r[ADDR_W-1:0];
+        addr = weight_start_sram_addr + r[ADDR_W-1:0] + kij_idx * row;
       end
       else begin
         addr = r[ADDR_W-1:0] + activation_start_sram_addr;
@@ -393,7 +505,6 @@ module core_tb;
     @(posedge clk);
   end
   endtask
-
   /*
   initial begin
     // dump waves
@@ -464,7 +575,7 @@ module core_tb;
     $display("Testbench finished at %0t", $time);
     $finish;
   end
-*/ 
+  */
  initial begin
     // dump waves
     $dumpfile("core_tb.vcd");
@@ -483,8 +594,13 @@ module core_tb;
     repeat (2) @(posedge clk);
 
     // Initialize weights array and write weight rows into activation SRAM
-    initialize_weights();
-    initialize_activations();
+    //initialize_weights();
+    //initialize_activations();
+    for(i = 0; i < num_kij; i = i + 1) begin
+      initialize_weights_from_file(i);
+    end
+
+    initialize_activations_from_file("./test_vectors/VGG16_quant_4bit_base_0_activation.txt");
     calculate_expected_psums();
     calculate_expected_outputs();
 
@@ -515,6 +631,4 @@ module core_tb;
     $display("Testbench finished at %0t", $time);
     $finish;
   end
-
-
 endmodule

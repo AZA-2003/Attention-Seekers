@@ -1,3 +1,5 @@
+../src/sync.v
+../src/clkgate.v
 ../src/fifo_mux_2_1.v
 ../src/fifo_mux_8_1.v
 ../src/fifo_mux_16_1.v
@@ -15,5 +17,6 @@
 ../src/ofifo.v
 ../src/corelet.v
 ../src/weight_stationary_controller.v
+../src/core_clk_gating_control.v
 ../src/core.v
 ../tb/core_tb.sv

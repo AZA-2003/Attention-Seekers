@@ -1,0 +1,105 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Mon Dec  1 01:17:56 2025
+[*]
+[dumpfile] "/foss/designs/Attention-Seekers/hardware/sim/core_tb.vcd"
+[dumpfile_mtime] "Mon Dec  1 01:10:47 2025"
+[dumpfile_size] 64226076
+[savefile] "/foss/designs/Attention-Seekers/hardware/sim/waveforms/core_tb_mac_debug.gtkw"
+[timestart] 428000
+[size] 1920 1043
+[pos] -27 -24
+*-20.700001 11045000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+[markername] AA
+[markername] BB
+[markername] CC
+[markername] DD
+[markername] EE
+[markername] FF
+[markername] GG
+[markername] HH
+[markername] II
+[markername] JJ
+[markername] KK
+[markername] LL
+[markername] MM
+[markername] NN
+[markername] OO
+[markername] PP
+[markername] QQ
+[markername] RR
+[markername] SS
+[markername] TT
+[markername] UU
+[markername] VV
+[markername] WW
+[markername] XX
+[markername] YY
+[markername] ZZ
+[treeopen] core_tb.
+[treeopen] core_tb.dut.
+[treeopen] core_tb.dut.u_corelet_inst.
+[treeopen] core_tb.dut.u_corelet_inst.dut.
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[1].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[2].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[5].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[6].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[7].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[8].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[1].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[2].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[3].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[4].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[5].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[6].
+[treeopen] core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[7].
+[sst_width] 297
+[signals_width] 198
+[sst_expanded] 1
+[sst_vpaned_height] 304
+@820
+core_tb.dut.u_wsc_inst.state_name_str[319:0]
+@22
+core_tb.dut.u_corelet_inst.u_mac_array.in_w[31:0]
+@28
+core_tb.dut.u_corelet_inst.u_mac_array.inst_w[1:0]
+@29
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[1].mac_tile_instance.inst_e[1:0]
+@22
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[1].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[2].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[3].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[4].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[5].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[6].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[7].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[1].mac_row_instance.col_num[8].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[1].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[2].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[3].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[4].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[5].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[6].mac_tile_instance.b_q[3:0]
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[7].mac_tile_instance.b_q[3:0]
+@28
+core_tb.dut.u_wsc_inst.sfu_active
+core_tb.dut.u_wsc_inst.sfu_active_to_mem
+core_tb.dut.u_corelet_inst.dut.sfu_ctrl_inst.start_sfu
+@820
+core_tb.dut.u_corelet_inst.dut.sfu_ctrl_inst.state_name_str[319:0]
+@420
+core_tb.dut.u_corelet_inst.dut.sfu_array[1].sfu_inst.psum_in[15:0]
+@28
+core_tb.dut.u_corelet_inst.dut.sfu_ctrl_inst.psum_mem_wr_enable
+@24
+core_tb.dut.u_corelet_inst.dut.sfu_ctrl_inst.psum_mem_addr[10:0]
+@420
+core_tb.dut.u_corelet_inst.dut.sfu_array[1].sfu_inst.psum_out[15:0]
+@22
+core_tb.dut.u_corelet_inst.u_mac_array.row_num[2].mac_row_instance.col_num[2].mac_tile_instance.b_q[3:0]
+[pattern_trace] 1
+[pattern_trace] 0
