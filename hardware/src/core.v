@@ -42,6 +42,7 @@ module core #(
     wire [ADDR_W-1:0] wsc_activation_sram_addr;
     wire [ADDR_W-1:0] wsc_psum_sram_addr;
     wire wsc_sfu_start;
+    wire wsc_mac_reset;
 
     // Corelet signals
     wire corelet_sfu_active;
@@ -81,6 +82,7 @@ module core #(
     ) u_wsc_inst (
         .clk(clk),
         .reset(reset),
+        .mac_reset(wsc_mac_reset),
         .debug_mode(controller_debug_mode),
 
         // Configuration inputs
@@ -144,6 +146,7 @@ module core #(
     ) u_corelet_inst (
         .clk        (clk),
         .reset      (reset),
+        .mac_reset  (wsc_mac_reset),
 
         .l0_in      (l0_in),
         .l0_rd      (wsc_l0_rd),

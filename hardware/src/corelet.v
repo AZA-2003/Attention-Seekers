@@ -9,6 +9,7 @@ module corelet #(
 (
     input                       clk,        // Clock input
     input                       reset,      // Reset input
+    input                       mac_reset,      // Reset input
     input  [bw*row-1:0]         l0_in,      // Input data for ififo
     input                       l0_rd,      // Read enable for ififo
     input                       l0_wr,      // Write enable for ififo
@@ -70,7 +71,7 @@ module corelet #(
         .row(row)
     ) u_mac_array (
         .clk      (clk),
-        .reset    (reset),
+        .reset    (reset || mac_reset),
         .in_w     (l0_out),
         .in_n     ({(psum_bw*col){1'b0}}),
         .out_s    (mac_out_s),
