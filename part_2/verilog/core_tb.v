@@ -211,6 +211,7 @@ initial begin
 
     for (t=0; t<col; t=t+1) begin  
       #0.5 clk = 1'b0;  w_scan_file = $fscanf(w_file,"%32b", D_xmem); WEN_xmem = 0; CEN_xmem = 0; if (t>0) A_xmem = A_xmem + 1; 
+       
       #0.5 clk = 1'b1;  
     end
 
