@@ -11,16 +11,20 @@ import torchvision.transforms as transforms
 from model_trainer import *
 from models import *
 from config import *
+from orchid_optim import *
 
 
-print("Training 4-bit Baseline for the 2-bit Training")
+print("Training 4-bit Baseline")
 print("Setting up Model..")
+## Moon-variant
+model_name = "VGG16_quant_4bit_orchid"
+model = VGG16_quant()
 ## Original 4-bit model
 # model_name = "VGG16_quant_4bit_base"
 # model = VGG16_quant()
 ## 4-bit modle base for 2-bit training
-model_name = "VGG16_quant_2bit_4pt"
-model = VGG16_quant2()
+# model_name = "VGG16_quant_2bit_4pt"
+# model = VGG16_quant2()
 #print(model)
 criterion =  nn.CrossEntropyLoss()
 
@@ -55,8 +59,10 @@ os.makedirs(f"./results/{model_name}",exist_ok=True)
 print("Setting up optimizers..")
 ## Adam optimizer (NOT VERY GOOD!)
 # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+## Moon optimizer
+optimizer = Orchid(model.parameters(), lr=LR_4bit_o, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
 ## SGD optimizer
-optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit, momentum=0.93,weight_decay=WEIGHT_DECAY)
+# optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit, momentum=0.93,weight_decay=WEIGHT_DECAY)
 
 ## Combined LR Scheduler (Warmup followed by Cosine Annealing)
 steps = EPOCHS * (len(iter(trainloader)))
@@ -78,9 +84,9 @@ scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer=optimizer,
 print("Setting up Trainer..")
 trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,testloader)
 print("Training...")
-# trainer.train(EPOCHS)
-# trainer.validate(save_weights=True)
-
+trainer.train(EPOCHS)
+trainer.validate(save_weights=True)
+'''
 print("Training 2-bit Baseline")
 print("Setting up Model..")
 ## Train the 2-bit 
@@ -90,7 +96,7 @@ os.makedirs("./results",exist_ok=True)
 os.makedirs(f"./results/{model_name}",exist_ok=True)
 print("Setting up optimizers..")
 ## SGD optimizer
-optimizer = torch.optim.SGD(model.parameters(), lr=LR_2bit, momentum=0.93,weight_decay=WEIGHT_DECAY)
+optimizer = torch.optim.SGD(model.parameters(), lr=LR_2bit, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
 
 ## Combined LR Scheduler (Warmup followed by Cosine Annealing)
 steps = EPOCHS * (len(iter(trainloader)))
@@ -117,5 +123,5 @@ for l in trainer.model.features:
 print("Training...")
 trainer.train(EPOCHS)
 trainer.validate(save_weights=True)
-
+'''
 print("Done")

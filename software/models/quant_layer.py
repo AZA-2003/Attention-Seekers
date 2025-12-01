@@ -42,8 +42,6 @@ def weight_quantization(b):
             input_q = uniform_quant(input_abs, b).mul(sign)
             ctx.save_for_backward(input, input_q)
             input_q = input_q.mul(alpha)               # rescale to the original range
-            ## log quant version
-            #...
             return input_q
 
         @staticmethod
