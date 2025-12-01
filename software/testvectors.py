@@ -70,7 +70,7 @@ conv_ref = torch.nn.Conv2d(in_channels = 8, out_channels=8, kernel_size = 3, pad
 conv_ref.weight = model.features[30].weight_q
 conv_ref.bias = model.features[30].bias
 output_ref = conv_ref(act)
-print(abs(output_recovered-output_ref).mean())
+print(f"Average Quantization Error: {abs(output_recovered-saves.outputs[1][0]).mean()}")
 
 w_int = torch.reshape(weight_int, (weight_int.size(0), weight_int.size(1), -1))  # merge ki, kj index to kij
 # w_int.weight.size() = torch.Size([8, 8, 9])
@@ -119,9 +119,11 @@ for o_nij in o_nijg:
         psum[:, int(o_nij/o_ni_dim)*a_pad_ni_dim + o_nij%o_ni_dim + int(kij/ki_dim)*a_pad_ni_dim + kij%ki_dim, kij]
 
 out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
-# difference = (out_2D - output_int[0,:,:,:])
-# print(difference.abs().sum())
-#print(psum.shape)
+difference = (out_2D - output_int[0,:,:,:])
+print(f"Total Recovery Error:{difference.abs().sum()}")
+out_recov = F.relu(out_2D * (act_alpha / (2**act_bit-1))) * ((w_alpha / (2**(w_bit-1)-1)))
+difference = (out_recov - saves.outputs[1][0])
+print(f"Total Recovery Error:{difference.abs().mean()}")
 
 '''
 nij = 0 # just a random number
@@ -148,7 +150,6 @@ bit_precision = 4
 
 for kij in kijg:
     W = w_int[:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
-
     file = open(f"{model_name}_{kij}_weight.txt", 'w') #write to file
     file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
     file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
@@ -192,7 +193,7 @@ for kij in kijg:
             #file.write(' ')  # for visibility with blank between words, you can use
         file.write('\n')
     file.close() #close file
-'''
+
 print(a_pad.shape, out.shape)
 nij = 0 # just a random number
 print(a_pad.shape)
@@ -241,7 +242,7 @@ for i in range(O.size(1)):  # time step
         #file.write(' ')  # for visibility with blank between words, you can use
     file.write('\n')
 file.close() #close file  
-
+'''
 ## Write the variables to 4 files for reading..(input, weights, pre-relu output, output)
 
 ## Create a scratch input and a conv layer and provide its output (also write to files)

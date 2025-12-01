@@ -5,6 +5,7 @@ from tqdm import tqdm
 import shutil
 import torch
 from torch.nn.utils import clip_grad_norm_
+# from torch.utils.tensorboard import SummaryWriter
 from typing import Dict
 
 
@@ -70,10 +71,15 @@ class Trainer():
         self.scheduler = scheduler
         self.train_loader = train_dloader
         self.test_loader = test_dloader
-        
-        self.scribe = {"Name": self.name,
-                       "Date Trained": time.ctime(time.time()),
-                       "Best prec": 0}
+
+        if scheduler != None:
+            self.scribe = {"Name": self.name,
+                           "Date Trained": time.ctime(time.time()),
+                           "LR": self.scheduler.get_last_lr()[0],
+                           "Best prec": 0}
+        #self.writer = SummaryWriter(log_dir=f"runs/{self.name}")
+        self.train_iters = 0
+        self.val_iters = 0
     
     def train(self,epochs,print_freq=200):
         for epoch in tqdm(range(epochs)):
@@ -96,6 +102,9 @@ class Trainer():
                 loss.backward()
                 self.optimizer.step()
                 self.scheduler.step()
+                #self.writer.add_scalar(f"{self.name}/loss/train",loss.detach(),self.train_iters)
+                #self.writer.add_scalar(f"{self.name}/precision/train",prec,self.train_iters)
+                self.train_iters+=1
                 if i % print_freq == 0:
                     print('Epoch: [{0}][{1}/{2}]\t' 'LR: {lr:.5f}\t'
                         'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
@@ -125,6 +134,9 @@ class Trainer():
                 prec = accuracy(outputs, targets)[0]
                 losses_val.update(loss.item(), inputs.size(0))
                 top1_val.update(prec.item(), inputs.size(0))
+                #self.writer.add_scalar(f"{self.name}/loss/val",loss.detach(),self.val_iters)
+                #self.writer.add_scalar(f"{self.name}/precision/val",prec.detach(),self.val_iters)
+                self.val_iters+=1
                 if i % print_freq == 0:
                     print('Test: [{0}/{1}]\t'
                         'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
@@ -156,7 +168,7 @@ class Trainer():
         
     def log_progress(self):
         with open(SCRIBE,"a") as f:
-            f.write(f"{self.scribe['Name']}\t{self.scribe['Date Trained']}\t{self.scribe['Best prec']}\n")
+            f.write(f"{self.scribe['Name']}\t{self.scribe['Date Trained']}\t{self.scribe['LR']}\t{self.scribe['Best prec']}\n")
     @staticmethod 
     def load_chkpoint(fdir):
         '''loads checkpoints given a checkpoint path'''
@@ -167,6 +179,6 @@ class Trainer():
     def hook_layer(self):
         save = SaveOutput()
         self.model.features[30].register_forward_pre_hook(save)
-        self.model.features[30].register_forward_hook(save) ##hook after the convolution and BEFORE the ReLU
+        self.model.features[31].register_forward_pre_hook(save) ##hook after the convolution and BEFORE the ReLU
         return save
         

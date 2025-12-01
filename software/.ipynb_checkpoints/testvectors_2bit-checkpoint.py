@@ -70,7 +70,7 @@ conv_ref = torch.nn.Conv2d(in_channels = 8, out_channels=8, kernel_size = 3, pad
 conv_ref.weight = model.features[30].weight_q
 conv_ref.bias = model.features[30].bias
 output_ref = conv_ref(act)
-print(abs(output_recovered-output_ref).mean())
+print(f"Average Quantization Error: {abs(output_recovered-output_ref).mean()}")
 
 w_int = torch.reshape(weight_int, (weight_int.size(0), weight_int.size(1), -1))  # merge ki, kj index to kij
 # w_int.weight.size() = torch.Size([8, 8, 9])
@@ -137,76 +137,141 @@ for o_nij in o_nijg:
                 psum[ic_tile, oc_tile, :, int(o_nij/o_ni_dim)*a_pad_ni_dim + o_nij%o_ni_dim + int(kij/ki_dim)*a_pad_ni_dim + kij%ki_dim, kij]
                 ## 4th index = (int(o_nij/30)*32 + o_nij%30) + (int(kij/3)*32 + kij%3)
 out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
-# difference = (out_2D - output_int[0,:,:,:])
-# print(difference.abs().sum())
+difference = (out_2D - output_int[0,:,:,:])
+print(f"Total Recovery Error:{difference.abs().sum()}")
 
-tile_id = 0 
+
+# tile_id = 0 
 nij = 0 # just a random number
-print(a_pad.shape)
-X = a_tile[tile_id,:,nij:nij+8]  # [tile_num, array row num, time_steps]
+# print(a_tile.shape)
+X0 = a_tile[0,:,nij:nij+36]  # [tile_num, array row num, time_steps]
+X1 = a_tile[1,:,nij:nij+36]  # [tile_num, array row num, time_steps]
 
 bit_precision = 2
 file = open(f"{model_name}_{nij}_activation.txt", 'w') #write to file
-file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
-file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+file.write('#time0row15[msb-lsb],time0row14[msb-lst],....,time0row0[msb-lst]#\n')
+file.write('#time1row15[msb-lsb],time1row14[msb-lst],....,time1row0[msb-lst]#\n')
 file.write('#................#\n')
 
-for i in range(X.size(1)):  # time step
-    for j in range(X.size(0)): # row #
-        X_bin = '{0:02b}'.format(round(X[7-j,i].item()))
+for i in range(X0.size(1)):  # time step
+    for j in range(X0.size(0)): # row #
+        X0_bin = '{0:02b}'.format(round(X0[7-j,i].item()))
+        X1_bin = '{0:02b}'.format(round(X1[7-j,i].item()))
         for k in range(bit_precision):
-            file.write(X_bin[k])        
-        #file.write(' ')  # for visibility with blank between words, you can use
-    file.write('\n')
-file.close() #close file    
-
-kij = 0
-W = w_tile[tile_id,:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
-
-bit_precision = 4
-file = open(f"{model_name}_{kij}_weight.txt", 'w') #write to file
-file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
-file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
-file.write('#................#\n')
-
-for i in range(W.size(0)):  # column #
-    for j in range(W.size(1)): # row #
-        if W[i,7-j].item() >= 0:
-            W_bin = '{0:04b}'.format(round(W[i,7-j].item()))
-        else:
-            W_bin = '{0:04b}'.format(round(W[i,7-j].item()+16))
+            file.write(X1_bin[k])
         for k in range(bit_precision):
-            file.write(W_bin[k])        
+            file.write(X0_bin[k])  
         #file.write(' ')  # for visibility with blank between words, you can use
     file.write('\n')
 file.close() #close file 
+# print(X0)
+# print(X1)
+# exit()
+#kij = 0
+ # w_tile[tile_num, array col num, array row num, kij]
+# print(w_tile.shape)
+bit_precision = 4
+
+for kij in kijg:
+    for tile_id in range(w_tile.shape[0]//2):
+        W = w_tile[(tile_id)*2:(tile_id+1)*2,:,:,kij]
+        #print(W.shape)
+        # exit()
+        file = open(f"{model_name}_{tile_id}_{kij}_weight.txt", 'w') #write to file
+        file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
+        file.write('#col0row15[msb-lsb],col0row6[msb-lst],....,col0row8[msb-lst]#\n')
+        file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
+        file.write('#col1row15[msb-lsb],col1row6[msb-lst],....,col1row8[msb-lst]#\n')
+        file.write('#................#\n')
+        for i in range(W.size(1)):  # column #
+            for s in range(2):
+                for j in range(W.size(2)): # row #
+                    if W[s,i,7-j].item() >= 0:
+                        W_bin = '{0:04b}'.format(round(W[s,i,7-j].item()))
+                    else:
+                        W_bin = '{0:04b}'.format(round(W[s,i,7-j].item()+16))
+                    for k in range(bit_precision):
+                        file.write(W_bin[k])        
+                    #file.write(' ')  # for visibility with blank between words, you can use
+                file.write('\n')
+        file.close() #close file 
+        # print(W)
 
 ic_tile_id = 0 
 oc_tile_id = 0 
 
 
-kij = 0
-nij = 2
-Ps = psum[ic_tile_id,oc_tile_id,:,nij:nij+8,kij] 
+# kij = 0
+# nij = 2
+# Ps = psum[ic_tile_id,oc_tile_id,:,nij:nij+36,kij]
+psum2 = psum[0,:,:,:]+psum[1,:,:,:]
+# print(psum2.shape, psum.shape)
+# exit()
 # psum[len(ic_tileg), len(oc_tileg), array_size, len(p_nijg), len(kijg)]
 
+for kij in kijg:
+    for tile_id in range(psum2.size(0)):
+        Ps = psum2[tile_id,:,nij:nij+36,kij] 
+        # print(Ps.shape)
+        bit_precision = 16
+        file = open(f"{model_name}_{tile_id}_{nij}_{kij}_psum.txt", 'w') #write to file
+        file.write('#time0col7[msb-lsb],time0col6[msb-lst],....,time0col0[msb-lst]#\n')
+        file.write('#time1col7[msb-lsb],time1col6[msb-lst],....,time1col0[msb-lst]#\n')
+        file.write('#................#\n')
+        for i in range(Ps.size(1)):  # time step
+            for j in range(Ps.size(0)): # row #
+                if Ps[7-j,i] >= 0:
+                    PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()))
+                else:
+                    PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()+65536))
+                for k in range(bit_precision):
+                    file.write(PS_bin[k])        
+                file.write(' ')  # for visibility with blank between words, you can use
+            file.write('\n')
+        file.close() #close file
+
+# O = out[:,nij:nij+16]  # [array row num, time_steps]
+# print(O.shape)
+# exit()
 bit_precision = 16
-file = open(f"{model_name}_{nij}_{kij}_psum.txt", 'w') #write to file
-file.write('#time0col7[msb-lsb],time0col6[msb-lst],....,time0col0[msb-lst]#\n')
-file.write('#time1col7[msb-lsb],time1col6[msb-lst],....,time1col0[msb-lst]#\n')
-file.write('#................#\n')
-for i in range(Ps.size(1)):  # time step
-    for j in range(Ps.size(0)): # row #
-        if Ps[7-j,i] >= 0:
-            PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()))
-        else:
-            PS_bin = '{0:016b}'.format(round(Ps[7-j,i].item()+65536))
-        for k in range(bit_precision):
-            file.write(PS_bin[k])        
-        #file.write(' ')  # for visibility with blank between words, you can use
-    file.write('\n')
-file.close() #close file
-  
+for tile_id in range(2):
+    O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
+    file = open(f"{model_name}__{tile_id}_{nij}_output_norelu.txt", 'w') #write to file
+    file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+    file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+    file.write('#................#\n')
+    for i in range(O.size(1)):  # time step
+        for j in range(O.size(0)//2): # row #
+            if O[7-j,i] >= 0:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
+            else:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()+65536))
+            for k in range(bit_precision):
+                file.write(O_bin[k])        
+            #file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+    file.close() #close file   
+print(out)
+
+out_relu = F.relu(out)
+print(out_relu)
+for tile_id in range(2):
+    O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
+    file = open(f"{model_name}__{tile_id}_{nij}_output_relu.txt", 'w') #write to file
+    file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+    file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+    file.write('#................#\n')
+    for i in range(O.size(1)):  # time step
+        for j in range(O.size(0)//2): # row #
+            if O[7-j,i] >= 0:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()))
+            else:
+                O_bin = '{0:016b}'.format(round(O[7-j,i].item()+65536))
+            for k in range(bit_precision):
+                file.write(O_bin[k])        
+            #file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+    file.close() #close file   
 
 ## Write the variables to 4 files for reading..(input, weights, pre-relu output, output)
 
