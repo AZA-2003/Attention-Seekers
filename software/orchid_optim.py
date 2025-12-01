@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
-## Customized impelementation of the Muon Optimizer
+## Customized impelementation of some variant of Muon Optimizer
 
 ## From Keller Jordan's Github (credits to him)
 def NewtonSchulz5(M,steps=5):
@@ -20,6 +20,7 @@ def NewtonSchulz5(M,steps=5):
         X = X.mT
     return X
 
+## C
 class Orchid(torch.optim.Optimizer):
 
     def __init__(self,params, lr, momentum=0.9,weight_decay=0):
@@ -45,7 +46,7 @@ class Orchid(torch.optim.Optimizer):
                 else:
                     mom = self.momentum * mom + p.grad.data
                 if mom.ndim >= 2:
-                    p.data -= group['lr'] * NewtonSchulz5(mom)
+                    p.data -= group['lr'] * NewtonSchulz5(mom.cuda())
                 else:
                     p.data -= group['lr'] * mom
         

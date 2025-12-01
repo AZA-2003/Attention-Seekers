@@ -59,7 +59,7 @@ os.makedirs(f"./results/{model_name}",exist_ok=True)
 print("Setting up optimizers..")
 ## Adam optimizer (NOT VERY GOOD!)
 # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-## Moon optimizer
+## Orchid optimizer
 optimizer = Orchid(model.parameters(), lr=LR_4bit_o, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
 ## SGD optimizer
 # optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit, momentum=0.93,weight_decay=WEIGHT_DECAY)
@@ -97,7 +97,8 @@ os.makedirs(f"./results/{model_name}",exist_ok=True)
 print("Setting up optimizers..")
 ## SGD optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=LR_2bit, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
-
+## Orchid optimizer
+optimizer = Orchid(model.parameters(), lr=LR_4bit_o, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
 ## Combined LR Scheduler (Warmup followed by Cosine Annealing)
 steps = EPOCHS * (len(iter(trainloader)))
 warmup_steps = WARMUP_STEPS * (len(iter(trainloader)))

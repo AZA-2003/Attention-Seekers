@@ -11,6 +11,7 @@ import torchvision.transforms as transforms
 from model_trainer import *
 from models import *
 from config import *
+from orchid_optim import *
 
 
 print("Training 4-bit Baseline w/ Rotatory Quantization")
@@ -53,8 +54,10 @@ os.makedirs("./results",exist_ok=True)
 os.makedirs(f"./results/{model_name}",exist_ok=True)
 
 print("Setting up optimizers..")
+## Orchid optimizer
+optimizer = Orchid(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r,weight_decay=WEIGHT_DECAY_r)
 ## Adam optimizer (NOT VERY GOOD!)
-optimizer = torch.optim.AdamW(model.parameters(), lr=LR_4bit_r, weight_decay=WEIGHT_DECAY_r, betas=BETAS_r)
+#optimizer = torch.optim.AdamW(model.parameters(), lr=LR_4bit_r, weight_decay=WEIGHT_DECAY_r, betas=BETAS_r)
 ## SGD optimizer
 # optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r ,weight_decay=WEIGHT_DECAY_r)
 
@@ -66,7 +69,7 @@ warmup_steps = WARMUP_STEPS_r * (len(iter(trainloader)))
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
 #                                         step_size=(steps), gamma=0.1)
 warmup = torch.optim.lr_scheduler.LinearLR(optimizer=optimizer,
-                                            start_factor=1/2,
+                                            start_factor=1/3,
                                             total_iters=warmup_steps)
 decay = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer,
                                                     T_max=steps-warmup_steps)

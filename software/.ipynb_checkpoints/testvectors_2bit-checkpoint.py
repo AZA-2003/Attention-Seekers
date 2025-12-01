@@ -50,14 +50,16 @@ print(saves.outputs[0][0].shape,saves.outputs[1][0].shape, trainer.model.feature
 act = saves.outputs[0][0]
 act_alpha  = model.features[30].act_alpha
 act_bit = 2
-act_quant_fn = act_quantization(act_bit)
-act_q = act_quant_fn(act, act_alpha)
+act_quant_fn = model.features[30].act_alq
+act_q = act_quant_fn(act,act_alpha)
 act_int = act_q / (act_alpha / (2**act_bit-1))
 
 ## Quantizing the weights
-weight_q = model.features[30].weight_q
+weight = model.features[30].weight
 w_alpha = model.features[30].weight_quant.wgt_alpha
 w_bit = 4
+weight_q_fn = model.features[30].weight_quant
+weight_q = weight_q_fn(weight)
 weight_int = weight_q / (w_alpha / (2**(w_bit-1)-1))
 
 conv_qint = torch.nn.Conv2d(in_channels=8, out_channels=8, kernel_size = 3, padding=1)
@@ -70,7 +72,7 @@ conv_ref = torch.nn.Conv2d(in_channels = 8, out_channels=8, kernel_size = 3, pad
 conv_ref.weight = model.features[30].weight_q
 conv_ref.bias = model.features[30].bias
 output_ref = conv_ref(act)
-print(f"Average Quantization Error: {abs(output_recovered-output_ref).mean()}")
+#print(f"Average Quantization Error: {abs(output_recovered-output_ref).mean()}")
 
 w_int = torch.reshape(weight_int, (weight_int.size(0), weight_int.size(1), -1))  # merge ki, kj index to kij
 # w_int.weight.size() = torch.Size([8, 8, 9])
@@ -138,9 +140,12 @@ for o_nij in o_nijg:
                 ## 4th index = (int(o_nij/30)*32 + o_nij%30) + (int(kij/3)*32 + kij%3)
 out_2D = torch.reshape(out, (out.size(0), o_ni_dim, -1)) # nij -> ni & nj
 difference = (out_2D - output_int[0,:,:,:])
-print(f"Total Recovery Error:{difference.abs().sum()}")
+print(f"Total Recovery Error w/output_ref:{difference.abs().sum()}")
+out_recov = F.relu(out_2D* (act_alpha / (2**act_bit-1)) * (w_alpha / (2**(w_bit-1)-1)))
+difference = (out_recov - saves.outputs[1][0])
+print(f"Total Recovery Error w/next layer prehook:{difference.abs().mean()}")
 
-
+'''
 # tile_id = 0 
 nij = 0 # just a random number
 # print(a_tile.shape)
@@ -229,10 +234,11 @@ for kij in kijg:
                 file.write(' ')  # for visibility with blank between words, you can use
             file.write('\n')
         file.close() #close file
-
+'''
 # O = out[:,nij:nij+16]  # [array row num, time_steps]
 # print(O.shape)
 # exit()
+nij = 0
 bit_precision = 16
 for tile_id in range(2):
     O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
@@ -251,12 +257,12 @@ for tile_id in range(2):
             #file.write(' ')  # for visibility with blank between words, you can use
         file.write('\n')
     file.close() #close file   
-print(out)
+# print(out)
 
 out_relu = F.relu(out)
-print(out_relu)
+# print(out_relu)
 for tile_id in range(2):
-    O = out[tile_id*8:(tile_id+1)*8,nij:nij+16]
+    O = out_relu[tile_id*8:(tile_id+1)*8,nij:nij+16]
     file = open(f"{model_name}__{tile_id}_{nij}_output_relu.txt", 'w') #write to file
     file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
     file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
