@@ -8,9 +8,10 @@ import torch.backends.cudnn as cudnn
 
 import torchvision
 import torchvision.transforms as transforms
-from model_trainer import *
+from rq_model_trainer import *
 from models import *
 from config import *
+from orchid_optim import *
 
 
 print("Training 4-bit Baseline w/ Rotatory Quantization")
@@ -20,9 +21,10 @@ print("Setting up Model..")
 # model = VGG16_quant()
 ## 4-bit modle base for 2-bit training
 model_name = "VGG16_rotaq_4bit"
-model = VGG16_rotaq()
+model = VGG16_rotaqv2()
 #print(model)
 criterion =  nn.CrossEntropyLoss()
+#+sum([torch.linalg.matrix_norm(l.weight_quant.wgt_O)] for l in model.features if isinstance(l,RotaQuantConv2d))
 
 print("Preparing Data..")
 normalize = transforms.Normalize(mean=[0.491, 0.482, 0.447], std=[0.247, 0.243, 0.262])
@@ -50,11 +52,13 @@ test_dataset = torchvision.datasets.CIFAR10(
 
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE_r, shuffle=False, num_workers=2)
 os.makedirs("./results",exist_ok=True)
-os.makedirs(f"./results/{model_name}",exist_ok=True)
+os.makedirs(f"./results/{model_name}_{PRUNE_PERC}",exist_ok=True)
 
 print("Setting up optimizers..")
+## Orchid optimizer
+optimizer = Orchid(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r,weight_decay=WEIGHT_DECAY_r)
 ## Adam optimizer (NOT VERY GOOD!)
-optimizer = torch.optim.AdamW(model.parameters(), lr=LR_4bit_r, weight_decay=WEIGHT_DECAY_r, betas=BETAS_r)
+#optimizer = torch.optim.AdamW(model.parameters(), lr=LR_4bit_r, weight_decay=WEIGHT_DECAY_r, betas=BETAS_r)
 ## SGD optimizer
 # optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r ,weight_decay=WEIGHT_DECAY_r)
 
@@ -66,7 +70,7 @@ warmup_steps = WARMUP_STEPS_r * (len(iter(trainloader)))
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
 #                                         step_size=(steps), gamma=0.1)
 warmup = torch.optim.lr_scheduler.LinearLR(optimizer=optimizer,
-                                            start_factor=1/2,
+                                            start_factor=1/3,
                                             total_iters=warmup_steps)
 decay = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer,
                                                     T_max=steps-warmup_steps)

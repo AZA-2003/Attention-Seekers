@@ -6,7 +6,7 @@ module core_tb_2b;
 
 parameter bw = 4;
 parameter psum_bw = 16;
-parameter len_kij = 2;
+parameter len_kij = 9;
 // parameter len_kij = 9;
 parameter len_onij = 16;
 parameter col = 8;
@@ -171,19 +171,22 @@ initial begin
   for (kij=0; kij<len_kij; kij=kij+1) begin  // kij loop
 
     case(kij)
-     0: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_0_weight.txt";
-     1: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_weight.txt";
-     2: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_2_weight.txt";
-     3: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_3_weight.txt";
-     4: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_4_weight.txt";
-     5: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_5_weight.txt";
-     6: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_6_weight.txt";
-     7: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_7_weight.txt";
-     8: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_8_weight.txt";
+     0: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_0_weight.txt";
+     1: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_1_weight.txt";
+     2: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_2_weight.txt";
+     3: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_3_weight.txt";
+     4: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_4_weight.txt";
+     5: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_5_weight.txt";
+     6: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_6_weight.txt";
+     7: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_7_weight.txt";
+     8: w_file_name = "./testvectors/quant_2b/VGG16_quant_2bit_base_1_8_weight.txt";
     endcase
-    
+    //
+     
     w_file = $fopen(w_file_name, "r");
     // Following three lines are to remove the first three comment lines of the file
+    w_scan_file = $fscanf(w_file,"%s", captured_data);
+    w_scan_file = $fscanf(w_file,"%s", captured_data);
     w_scan_file = $fscanf(w_file,"%s", captured_data);
     w_scan_file = $fscanf(w_file,"%s", captured_data);
     w_scan_file = $fscanf(w_file,"%s", captured_data);
@@ -212,6 +215,7 @@ initial begin
 
     for (t=0; t<2*col; t=t+1) begin  
       #0.5 clk = 1'b0;  w_scan_file = $fscanf(w_file,"%32b", D_xmem); WEN_xmem = 0; CEN_xmem = 0; if (t>0) A_xmem = A_xmem + 1; 
+  
       #0.5 clk = 1'b1;  
     end
 
@@ -332,7 +336,8 @@ initial begin
   
   ////////// Start verification with RELU in parallel //////////
 
-  out_file = $fopen("./testvectors/quant_4b/VGG16_quant_4bit_base_0_output_relu.txt", "r");  
+  out_file = $fopen("./testvectors/quant_2b/VGG16_quant_2bit_base__1_0_output_relu.txt", "r"); 
+
 
   // Following three lines are to remove the first three comment lines of the file
   out_scan_file = $fscanf(out_file,"%s", answer); 
@@ -348,110 +353,110 @@ initial begin
   sfu_relu = 0;
   temp = 0;
   
-  // for (m = 0; m < o_nij; m=m+1) begin
-  //    A_pmem = 0;
-  //    for (i = 0; i < o_nij; i=i+1) begin
-  //       temp = i + m*(len_nij**0.5); 
-  //       for (j = 0; j < (len_kij**0.5); j=j+1) begin
-	//    for (k = 0; k < (len_kij**0.5); k=k+1) begin
-	//       WEN_pmem = 1; CEN_pmem = 0; A_pmem = (k*(len_nij+1)+k*1) + temp;
-  //             #0.5 clk = 1'b0;
-  //             #0.5 clk = 1'b1;
-	//       sfu_acc = 1;
+  for (m = 0; m < o_nij; m=m+1) begin
+     A_pmem = 0;
+     for (i = 0; i < o_nij; i=i+1) begin
+        temp = i + m*(len_nij**0.5); 
+        for (j = 0; j < (len_kij**0.5); j=j+1) begin
+	   for (k = 0; k < (len_kij**0.5); k=k+1) begin
+	      WEN_pmem = 1; CEN_pmem = 0; A_pmem = (k*(len_nij+1)+k*1) + temp;
+              #0.5 clk = 1'b0;
+              #0.5 clk = 1'b1;
+	      sfu_acc = 1;
 	      
-	//       if (sfu_relu_2q == 1'b1) begin
-	//         out_scan_file = $fscanf(out_file, "%128b", answer);
-	//         // Compare output from the module with the expected answer
-  //               if (sfu_out == answer) begin
-	//           $display("sfpout: %128b", sfu_out);
-  //                 $display("answer: %128b", answer);
-  //                 $display("%2d-th output featuremap Data matched! :D", out_num);
-  //               end else begin
-  //                 // Report error if the output does not match
-  //                 $display("%2d-th output featuremap Data ERROR!!", out_num); 
-  //                 $display("sfpout: %128b", sfu_out);
-  //                 $display("answer: %128b", answer);
-  //                 error = 1;
-  //               end
-	// 	out_num = out_num + 1;
-	//       end
-	//         sfu_relu = 0;
-  //          end
-	//    temp = A_pmem + ((len_nij**0.5)) - ((len_kij**0.5)-1) + (len_nij+1);
-  //       end
-  //       sfu_acc = 0;
-  //       sfu_relu = 1;
-  //    end
-  // end
-  // #0.5 clk = 1'b0;
-  // #0.5 clk = 1'b1;
-  // sfu_acc = 0; sfu_relu = 0; WEN_pmem = 1; CEN_pmem = 1;
+	      if (sfu_relu_2q == 1'b1) begin
+	        out_scan_file = $fscanf(out_file, "%128b", answer);
+	        // Compare output from the module with the expected answer
+                if (sfu_out == answer) begin
+	          $display("sfpout: %128b", sfu_out);
+                  $display("answer: %128b", answer);
+                  $display("%2d-th output featuremap Data matched! :D", out_num);
+                end else begin
+                  // Report error if the output does not match
+                  $display("%2d-th output featuremap Data ERROR!!", out_num); 
+                  $display("sfpout: %128b", sfu_out);
+                  $display("answer: %128b", answer);
+                  error = 1;
+                end
+		out_num = out_num + 1;
+	      end
+	        sfu_relu = 0;
+           end
+	   temp = A_pmem + ((len_nij**0.5)) - ((len_kij**0.5)-1) + (len_nij+1);
+        end
+        sfu_acc = 0;
+        sfu_relu = 1;
+     end
+  end
+  #0.5 clk = 1'b0;
+  #0.5 clk = 1'b1;
+  sfu_acc = 0; sfu_relu = 0; WEN_pmem = 1; CEN_pmem = 1;
 
-  // if (error == 0) begin
-  //   $display("############ No error detected ##############"); 
-  //   $display("########### Project Completed !! ############");
-  // end
+  if (error == 0) begin
+    $display("############ No error detected ##############"); 
+    $display("########### Project Completed !! ############");
+  end
 
-  // ////////// Accumulation /////////
-  // //out_file = $fopen("./verilog/VGG16_quant_2bit_base_0_output_norelu.txt", "r");  
+  ////////// Accumulation /////////
+  //out_file = $fopen("./verilog/VGG16_quant_2bit_base_0_output_norelu.txt", "r");  
 
-  // // Following three lines are to remove the first three comment lines of the file
-  // //out_scan_file = $fscanf(out_file,"%s", answer); 
-  // //out_scan_file = $fscanf(out_file,"%s", answer); 
-  // //out_scan_file = $fscanf(out_file,"%s", answer); 
+  // Following three lines are to remove the first three comment lines of the file
+  //out_scan_file = $fscanf(out_file,"%s", answer); 
+  //out_scan_file = $fscanf(out_file,"%s", answer); 
+  //out_scan_file = $fscanf(out_file,"%s", answer); 
 
-  // //error = 0;
+  //error = 0;
 
 
 
-  // //$display("############ Verification Start during accumulation #############"); 
+  //$display("############ Verification Start during accumulation #############"); 
 
-  // //for (i=0; i<len_onij+1; i=i+1) begin 
+  //for (i=0; i<len_onij+1; i=i+1) begin 
 
-  //   //#0.5 clk = 1'b0; 
-  //   //#0.5 clk = 1'b1; 
+    //#0.5 clk = 1'b0; 
+    //#0.5 clk = 1'b1; 
 
-  //   //if (i>0) begin
-  //    //out_scan_file = $fscanf(out_file,"%128b", answer); // reading from out file to answer
-  //   //   if (Q_out == answer)
-  //   //     $display("%2d-th output featuremap Data matched! :D", i); 
-  //   //   else begin
-  //   //     $display("%2d-th output featuremap Data ERROR!!", i); 
-  //   //     $display("sfpout: %128b", Q_out);
-  //   //     $display("answer: %128b", answer);
-  //   //    error = 1;
-  //   //   end
-  //   //end
+    //if (i>0) begin
+     //out_scan_file = $fscanf(out_file,"%128b", answer); // reading from out file to answer
+    //   if (Q_out == answer)
+    //     $display("%2d-th output featuremap Data matched! :D", i); 
+    //   else begin
+    //     $display("%2d-th output featuremap Data ERROR!!", i); 
+    //     $display("sfpout: %128b", Q_out);
+    //     $display("answer: %128b", answer);
+    //    error = 1;
+    //   end
+    //end
    
  
-  //   //#0.5 clk = 1'b0; reset = 1;
-  //   //#0.5 clk = 1'b1;  
-  //   //#0.5 clk = 1'b0; reset = 0; 
-  //   //#0.5 clk = 1'b1;  
+    //#0.5 clk = 1'b0; reset = 1;
+    //#0.5 clk = 1'b1;  
+    //#0.5 clk = 1'b0; reset = 0; 
+    //#0.5 clk = 1'b1;  
 
-  //   // for (j=0; j<len_kij+1; j=j+1) begin 
-  //   // 
-  //   //   #0.5 clk = 1'b0;   
-  //   //     if (j<len_kij) begin CEN_pmem = 0; WEN_pmem = 1; acc_scan_file = $fscanf(acc_file,"%11b", A_pmem); end
-  //   //                    else  begin CEN_pmem = 1; WEN_pmem = 1; end
-  //   // 
-  //   //     if (j>0)  acc = 1;  
-  //   //   #0.5 clk = 1'b1;   
-  //   // end
+    // for (j=0; j<len_kij+1; j=j+1) begin 
+    // 
+    //   #0.5 clk = 1'b0;   
+    //     if (j<len_kij) begin CEN_pmem = 0; WEN_pmem = 1; acc_scan_file = $fscanf(acc_file,"%11b", A_pmem); end
+    //                    else  begin CEN_pmem = 1; WEN_pmem = 1; end
+    // 
+    //     if (j>0)  acc = 1;  
+    //   #0.5 clk = 1'b1;   
+    // end
 
-  //   #0.5 clk = 1'b0; acc = 0;
-  //   #0.5 clk = 1'b1; 
-  // //end
+    #0.5 clk = 1'b0; acc = 0;
+    #0.5 clk = 1'b1; 
+  //end
 
 
-  // //if (error == 0) begin
-  // //	$display("############ No error detected ##############"); 
-  // //	$display("########### Project Completed !! ############"); 
+  //if (error == 0) begin
+  //	$display("############ No error detected ##############"); 
+  //	$display("########### Project Completed !! ############"); 
 
-  // //end
+  //end
 
-  // // $fclose(acc_file);
-  // //////////////////////////////////
+  // $fclose(acc_file);
+  //////////////////////////////////
 
   for (t=0; t<10; t=t+1) begin  
     #0.5 clk = 1'b0;  

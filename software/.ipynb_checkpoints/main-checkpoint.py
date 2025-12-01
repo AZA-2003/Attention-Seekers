@@ -59,7 +59,7 @@ os.makedirs(f"./results/{model_name}",exist_ok=True)
 print("Setting up optimizers..")
 ## Adam optimizer (NOT VERY GOOD!)
 # optimizer = torch.optim.Adam(model.parameters(), lr=LR)
-## Moon optimizer
+## Orchid optimizer
 optimizer = Orchid(model.parameters(), lr=LR_4bit_o, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
 ## SGD optimizer
 # optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit, momentum=0.93,weight_decay=WEIGHT_DECAY)
