@@ -21,6 +21,7 @@ module weight_stationary_controller #(
   // MAC Array control signals (outputs)
   output reg                     execute,
   output reg                     load,
+  output reg                     mac_reset,
 
   // L0 control signals (outputs)
   output reg                      l0_rd,
@@ -243,6 +244,7 @@ module weight_stationary_controller #(
           end
           else if((gp_counter == (num_nij_to_compute + (2*col) + 2)) && (kij_counter == num_kij_to_compute)) begin
             next_state = SFU_START;
+            //next_state = IDLE;
             // FIXME: Need to start SFU process here instead of going to IDLE directly
           end
           else if((gp_counter == (num_nij_to_compute + (2*col) + 2)) && (kij_counter != num_kij_to_compute)) begin
@@ -530,6 +532,21 @@ module weight_stationary_controller #(
   end
 
   assign sfu_active_to_mem = sfu_active || (state == SFU_PROCESS);
+
+  // MAC Reset control
+  always @ (posedge clk) begin
+    if (reset) begin
+      mac_reset <= 1'b0;
+    end
+    else begin
+      if((state == KERNEL_LOAD_TO_L0) && (gp_counter == 0)) begin
+        mac_reset <= 1'b1;
+      end
+      else begin
+        mac_reset <= 1'b0;
+      end
+    end 
+  end
 
   `ifndef SYNTHESIS
     // General String for state name (for debug)
