@@ -1,7 +1,7 @@
 // Created by prof. Mingu Kang @VVIP Lab in UCSD ECE department
 // Please do not spread this code without permission
 // `define MODE 1
-module l0 (clk, in, out, rd, wr, flush_rd_ptr, o_full, reset, o_ready);
+module l0 (clk, in, out, rd, wr, o_full, reset, o_ready);
 
   parameter row  = 8;
   parameter bw = 4;
@@ -10,7 +10,6 @@ module l0 (clk, in, out, rd, wr, flush_rd_ptr, o_full, reset, o_ready);
   input  wr;
   input  rd;
   input  reset;
-  input  flush_rd_ptr;
   input  [row*bw-1:0] in;
   output [row*bw-1:0] out;
   output o_full;
@@ -32,7 +31,6 @@ module l0 (clk, in, out, rd, wr, flush_rd_ptr, o_full, reset, o_ready);
 	 .wr_clk(clk),
 	 .rd(rd_en[i]),
 	 .wr(wr),
-	 .flush_rd_ptr(flush_rd_ptr),
          .o_empty(empty[i]),
          .o_full(full[i]),
 	 .in(in[(((i+1)*bw)-1):(i*bw)]),

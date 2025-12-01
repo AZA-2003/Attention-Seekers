@@ -1,6 +1,6 @@
 // Created by prof. Mingu Kang @VVIP Lab in UCSD ECE department
 // Please do not spread this code without permission 
-module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, flush_rd_ptr, o_full, o_empty, reset);
+module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, o_full, o_empty, reset);
   parameter bw = 4;
   parameter simd = 1;
   //parameter lrf_depth = 1;
@@ -10,7 +10,6 @@ module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, flush_rd_ptr, o_full, o_em
   input  rd;
   input  wr;
   input  reset;
-  input  flush_rd_ptr;
 
   output o_full;
   output o_empty;
@@ -127,9 +126,6 @@ module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, flush_rd_ptr, o_full, o_em
 
  always @ (posedge rd_clk) begin
    if (reset) begin
-      rd_ptr <= 7'b0000000;
-   end
-   else if (flush_rd_ptr) begin
       rd_ptr <= 7'b0000000;
    end
    else if ((rd == 1) && (empty == 0)) begin

@@ -3,7 +3,7 @@
 module mac_tile (clk, out_s, in_w, out_e, in_n, inst_w, inst_e, reset);
 
 parameter bw = 4;
-parameter psum_bw = 18;
+parameter psum_bw = 16;
 
 output [psum_bw-1:0] out_s;
 input  [bw-1:0] in_w; 

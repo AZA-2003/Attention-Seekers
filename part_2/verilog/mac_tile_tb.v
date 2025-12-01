@@ -3,7 +3,7 @@
 module mac_tile_tb;
 
 parameter bw = 4;
-parameter psum_bw = 18;
+parameter psum_bw = 16;
 
 reg clk, reset;
 reg  [bw-1:0] in_w;
@@ -127,7 +127,13 @@ initial begin
     // execute, weights = 4, 2
     in_w = 4'b0101; //1,1
     inst_w = 3'b010; // non simd, ex=0, load weight = 1
-    in_n = {9'd0, 9'd0}; //out = 4, 2
+    in_n = {16'sd300}; //out = 4, 2
+
+    #10;
+    // execute, weights = 4, 2
+    in_w = 4'b1010; //2,2
+    inst_w = 3'b010; // non simd, ex=0, load weight = 1
+    in_n = {-16'sd300}; //out = 4, 2
 
     #20
 

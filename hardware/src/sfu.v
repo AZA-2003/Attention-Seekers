@@ -1,58 +1,49 @@
 module sfu #(parameter psum_bw = 16)(
-    input clk,
-    input rstn,
-    input valid_in,
-    input [psum_bw-1:0] psum_in,
-    output reg valid_out,
-    output reg [psum_bw-1:0] psum_out
+    input  wire                     clk,
+    input  wire                     reset,
+    input  wire [1:0]               OP,
+    input  wire signed [psum_bw-1:0] psum_in,
+    output wire signed [psum_bw-1:0]  psum_out
 );
 
-reg [psum_bw-1:0] acc;
-wire [psum_bw-1:0] relu;
-reg valid_in_q;
-wire valid_negedge;
+    // Accumulator holds signed partial-sum/accumulation
+    reg signed [psum_bw-1:0] acc;
 
-assign valid_negedge = !valid_in && valid_in_q;
-// rstn to make accumulator 0.
-// Valid_q negedge detector to assert out_valid
+    // OP codes
+    localparam OP_NOP  = 2'b00;
+    localparam OP_SET  = 2'b01;
+    localparam OP_ACC  = 2'b10;
+    localparam OP_RELU = 2'b11;
 
-always @ (posedge clk) begin
-    if (!rstn) begin
-        valid_in_q <= 0;
-        valid_out <= 0;
-    end
-    else begin
-        valid_in_q <= valid_in; 
-        valid_out <= valid_negedge; // negedge detect
-
-    end
-end
-
-always @ (posedge clk)  begin
-    if (!rstn) begin
-        acc <= 0;
-    end
-    else begin
-        if (valid_in) begin
-            acc <= acc + psum_in;
+    // Sequential behavior: update accumulator based on OP on posedge clk
+    always @(posedge clk) begin
+        if (reset) begin
+            acc <= {psum_bw{1'b0}};
         end
         else begin
-            acc <= 0;
+            case (OP)
+                OP_NOP: begin
+                    // do nothing: keep acc
+                    acc <= acc;
+                end
+                OP_SET: begin
+                    // load acc with psum_in
+                    acc <= psum_in;
+                end
+                OP_ACC: begin
+                    // accumulate
+                    acc <= acc + psum_in;
+                end
+                OP_RELU: begin
+                    // RELU on acc: if acc > 0 keep, else zero
+                    acc <= (acc > 0) ? acc : {psum_bw{1'b0}};
+                end
+                default: acc <= acc;
+            endcase
+
         end
     end
-end
 
-always @ (posedge clk) begin
-    if (!rstn)
-        psum_out <= 0;
-    else begin
-        if (!valid_negedge)
-            psum_out <= 0;
-        else 
-            psum_out <= relu;
-    end 
-end
-
-assign relu = (acc[psum_bw-1])? 0 : acc; // relu
+    assign psum_out = acc;
 
 endmodule

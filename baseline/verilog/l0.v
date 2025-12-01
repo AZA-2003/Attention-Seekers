@@ -1,7 +1,7 @@
 // Created by prof. Mingu Kang @VVIP Lab in UCSD ECE department
 // Please do not spread this code without permission
 // `define MODE 1
-module l0 (clk, in, out, rd, wr, o_full, reset, o_ready);
+module l0 (clk, in, ld_mode, out, rd, wr, o_full, reset, o_ready);
 
   parameter row  = 8;
   parameter bw = 4;
@@ -10,6 +10,7 @@ module l0 (clk, in, out, rd, wr, o_full, reset, o_ready);
   input  wr;
   input  rd;
   input  reset;
+  input  ld_mode;
   input  [row*bw-1:0] in;
   output [row*bw-1:0] out;
   output o_full;
@@ -44,25 +45,26 @@ module l0 (clk, in, out, rd, wr, o_full, reset, o_ready);
       rd_en <= 8'b00000000;
    end
    else begin
-`ifdef MODE
-      /////////////// version1: read all row at a time ////////////////
-      if (rd) begin
-	      rd_en <= 8'b1111_1111;
-      end 
-      else begin
-	      rd_en <= 8'b0000_0000;
+      if (ld_mode) begin
+            /////////////// version1: read all row at a time ////////////////
+            if (rd) begin
+	            rd_en <= 8'b1111_1111;
+            end 
+            else begin
+	            rd_en <= 8'b0000_0000;
+            end
+            ///////////////////////////////////////////////////////
       end
-      ///////////////////////////////////////////////////////
-`else
-      //////////////// version2: read 1 row at a time /////////////////
-      if (rd) begin
-	      rd_en <= {rd_en[row-2:0], 1'b1};
-      end 
       else begin
-	      rd_en <= {rd_en[row-2:0], 1'b0};
+            //////////////// version2: read 1 row at a time /////////////////
+            if (rd) begin
+	            rd_en <= {rd_en[row-2:0], 1'b1};
+            end 
+            else begin
+	            rd_en <= {rd_en[row-2:0], 1'b0};
+            end
+            ///////////////////////////////////////////////////////
       end
-      ///////////////////////////////////////////////////////
-`endif
    end
   end
 endmodule

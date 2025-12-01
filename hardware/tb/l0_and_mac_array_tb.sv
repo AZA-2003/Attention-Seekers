@@ -11,7 +11,7 @@ module l0_and_mac_array_tb;
 
   localparam num_oij = 16;
   localparam num_nij = ($clog2(num_oij) + 2*padding)**2;
-  localparam num_kij = 1;
+  localparam num_kij = 9;
   localparam padding = 1;
   localparam ic = 8;
   localparam oc = 8;
@@ -29,7 +29,7 @@ module l0_and_mac_array_tb;
   reg start_mac_compute;
 
   // Expected weights array (flattened: index = row_idx*col + col_idx)
-  reg signed [bw-1:0] weights_to_load [row*col-1:0];
+  reg signed [bw-1:0] weights_to_load [row*col-1:0][num_kij-1:0];
   reg [bw-1:0] activations_to_load [((row + (2*padding))**2)-1:0][ic-1:0];
   reg signed [psum_bw-1:0] expected_psums [num_psums-1:0][oc];
   reg [bw-1:0] actual_weights_loaded [row*col-1:0];
@@ -78,64 +78,69 @@ module l0_and_mac_array_tb;
   // Task: calculate expected psums
   // expected_psums[index][o_ch] where index = k * num_nij + n
   task calculate_expected_psums;
-    integer k, n, o_ch, i_ch;
+    input integer kij_idx;
+    integer n, o_ch, i_ch;
     integer idx;
     reg signed [psum_bw-1:0] mult;
     reg signed [psum_bw-1:0] a_ext;
     reg signed [psum_bw-1:0] w_ext;
   begin
     // zero expected psums
-    for (idx = 0; idx < num_psums; idx = idx + 1) begin
+    for (idx = kij_idx * num_nij; idx < ((kij_idx+1) * num_nij); idx = idx + 1) begin
       for (o_ch = 0; o_ch < oc; o_ch = o_ch + 1) begin
         expected_psums[idx][o_ch] = 0;
       end
     end
 
     // compute
-    for (k = 0; k < num_kij; k = k + 1) begin
+    //for (k = 0; k < num_kij; k = k + 1) begin
       for (n = 0; n < num_nij; n = n + 1) begin
-        idx = k * num_nij + n;
+        idx = kij_idx * num_nij + n;
         for (o_ch = 0; o_ch < oc; o_ch = o_ch + 1) begin
           for (i_ch = 0; i_ch < ic; i_ch = i_ch + 1) begin
             // sign-extend operands into psum width before multiply
             a_ext = $signed({1'b0, activations_to_load[n][i_ch]});
-            w_ext = weights_to_load[o_ch*row + i_ch];
+            w_ext = weights_to_load[i_ch*row + o_ch][kij_idx];
             mult = a_ext * w_ext;
             expected_psums[idx][o_ch] = expected_psums[idx][o_ch] + mult;
           end
         end
       end
-    end
-    $display("INFO | %0t | Calculated expected psums for %0d entries", $time, num_psums);
+    //end
+    $display("INFO | %0t | Calculated expected psums for %0d entries", $time, num_nij);
   end
   endtask
 
   // Task: read OFIFO and check outputs against expected_psums
   task check_expected_psums;
+    input integer kij_idx;
     integer p_idx;
     integer col_idx;
+    integer num_errors;
     reg signed [psum_bw-1:0] actual;
     reg signed [psum_bw-1:0] expected;
   begin
     // start read
     ofifo_rd = 1;
 
-    for (p_idx = 0; p_idx < num_psums; p_idx = p_idx + 1) begin
+    for (p_idx = kij_idx * num_nij; p_idx < ((kij_idx+1) * num_nij); p_idx = p_idx + 1) begin
       // wait for next psum available on OFIFO (synchronous check per posedge)
       @(posedge clk);
       for (col_idx = 0; col_idx < col; col_idx = col_idx + 1) begin
         actual = ofifo_out[(col_idx+1)*psum_bw-1 -: psum_bw];
         expected = expected_psums[p_idx][col_idx];
         if (actual !== expected) begin
-          $display("ERROR | %0t | PSUM idx=%0d col=%0d: actual=0x%0h expected=0x%0h", $time, p_idx, col_idx, actual, expected);
+          $display("ERROR | %0t | PSUM computation not matching for idx=%0d col=%0d: actual=0x%0h expected=0x%0h", $time, p_idx, col_idx, actual, expected);
+          num_errors = num_errors + 1;
         end
         else begin
-          $display("INFO  | %0t | PSUM idx=%0d col=%0d: actual=0x%0h", $time, p_idx, col_idx, actual);
+          $display("INFO  | %0t | PSUM computation matching for idx=%0d col=%0d: actual=0x%0h", $time, p_idx, col_idx, actual);
         end
       end
     end
 
     // stop read
+    $display("INFO  | %0t | Number of psum computation errors = %0d out of a total of %0d", $time, num_errors, num_psums*col);
     ofifo_rd = 0;
   end
   endtask
@@ -149,7 +154,7 @@ module l0_and_mac_array_tb;
     integer N;
     reg [bw-1:0] val;
   begin
-    N = num_nij;
+    N = $clog2(num_nij);
     // For each input channel
     for (a_ic = 0; a_ic < ic; a_ic = a_ic + 1) begin
       // Walk the N x N grid (including padding)
@@ -183,6 +188,7 @@ module l0_and_mac_array_tb;
 
   // Task: check that loaded weights in mac tiles match expected values
   task check_loaded_weights;
+    input integer kij_idx;
     integer row_idx;
     integer col_idx;
     integer idx;
@@ -194,7 +200,7 @@ module l0_and_mac_array_tb;
     for (row_idx = 1; row_idx <= row; row_idx = row_idx + 1) begin
       for (col_idx = 1; col_idx <= col; col_idx = col_idx + 1) begin
         idx = (row_idx-1) * col + (col_idx-1);
-        expected = weights_to_load[idx];
+        expected = weights_to_load[idx][kij_idx];
         // Hierarchical reference into the instantiated design under test
         actual = actual_weights_loaded[idx];
         if (actual !== expected) begin
@@ -218,6 +224,7 @@ module l0_and_mac_array_tb;
   // Task: write the numbers 0-7 then 8-15 in alternating fashion across the 8 rows
   task write_fifo_values;
     input bit is_activation;
+    input integer kij_idx;
     integer load_idx;
     integer row_idx;
     integer load_idx_max;
@@ -236,11 +243,11 @@ module l0_and_mac_array_tb;
         if(is_activation == 0) begin
           if (row_idx % 2 == 0) begin
             val = load_idx[bw-1:0];
-            weights_to_load[row_idx*col + load_idx] = val;
+            weights_to_load[row_idx*col + load_idx][kij_idx] = val;
           end 
           else begin
             val = (load_idx + row);
-            weights_to_load[row_idx*col + load_idx] = val;
+            weights_to_load[row_idx*col + load_idx][kij_idx] = val;
           end
         end
         else begin
@@ -259,6 +266,7 @@ module l0_and_mac_array_tb;
   end
   endtask
 
+  integer kij_idx = 0;
   initial begin
     // dump waves
     $dumpfile("l0_and_mac_array_tb.vcd");
@@ -278,46 +286,47 @@ module l0_and_mac_array_tb;
     repeat (2) @(posedge clk);
 
     // Write patterns into the FIFOs using the write_fifo_values task (alternating 0..7 and 8..15)
-    write_fifo_values(1'b0); // Write weights
+    for(kij_idx = 0; kij_idx < num_kij; kij_idx = kij_idx + 1) begin
+      $display("INFO | %0t | Starting FIFO writes of weights for kernel index %0d", $time, kij_idx);
+      write_fifo_values(1'b0, kij_idx); // Write weights
 
-    // After write is complete, pulse start_kernel_load for one cycle to trigger kernel loading
-    start_kernel_load = 1;
-    @(posedge clk);
-    start_kernel_load = 0; 
-    $display("INFO | %0t | Pulsed start_kernel_load", $time);
+      // After write is complete, pulse start_kernel_load for one cycle to trigger kernel loading
+      start_kernel_load = 1;
+      @(posedge clk);
+      start_kernel_load = 0; 
+      $display("INFO | %0t | Pulsed start_kernel_load", $time);
 
-    // Wait 24 cycles for processing
-    // Why 24 cycles?
-    // 2 cycles per weight load * 8 weights = 16 cycles
-    // + 8 extra cycles to ensure all loads are done as we stagger weights across MAC rows
-    repeat (3 * col) @(posedge clk);
+      // Wait 24 cycles for processing
+      // Why 24 cycles?
+      // 2 cycles per weight load * 8 weights = 16 cycles
+      // + 8 extra cycles to ensure all loads are done as we stagger weights across MAC rows
+      repeat (3 * col) @(posedge clk);
 
-    // Check loaded weights in mac tiles against expected array
-    check_loaded_weights();
+      // Check loaded weights in mac tiles against expected array
+      check_loaded_weights(kij_idx);
 
-    $display("INFO | %0t | Completed weight stationary loading, now moving onto MAC computation", $time);
-    $display("INFO | %0t | Loading activations into IFIFO", $time);
+      $display("INFO | %0t | Completed weight stationary loading, now moving onto MAC computation", $time);
+      $display("INFO | %0t | Loading activations into IFIFO", $time);
 
-    // Next Steps:
-    // 1. Load input activations into L0
-    initialize_activations();
-    write_fifo_values(1'b1); // Write activations
+      // Next Steps:
+      // 1. Load input activations into L0
+      initialize_activations();
+      // 2. Trigger MAC operations
+      write_fifo_values(1'b1, kij_idx); // Write activations
+      // After write is complete, pulse start_mac_compute for one cycle to trigger mac computation 
+      $display("INFO | %0t | MAC computation starting now", $time);
 
-    // 2. Trigger MAC operations
-    // 3. Check MAC outputs
-    calculate_expected_psums();
+      start_mac_compute = 1;
+      @(posedge clk);
+      start_mac_compute = 0; 
 
-    // After write is complete, pulse start_mac_compute for one cycle to trigger mac computation 
+      repeat (num_nij + 2*col - 1) @(posedge clk);
 
-    $display("INFO | %0t | MAC computation starting now", $time);
-
-    start_mac_compute = 1;
-    @(posedge clk);
-    start_mac_compute = 0; 
-
-    repeat (num_nij + 2*col - 1) @(posedge clk);
-
-    check_expected_psums();
+      // 3. Check MAC outputs
+      $display("INFO | %0t | Reading OFIFO to verify psum values", $time);
+      calculate_expected_psums(kij_idx);
+      check_expected_psums(kij_idx);
+    end
 
     // TB Drain time
     repeat (2) @(posedge clk);
