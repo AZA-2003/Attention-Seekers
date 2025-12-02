@@ -132,6 +132,57 @@ print(f"Total Recovery Error w/next layer prehook:{difference.abs().mean()}")
 
 print(w_int.shape)
 
+bit_precision = 4
+file = open(f"{model_name}_os_weight.txt", 'w') #write to file
+file.write('#col0row7[msb-lsb],col0row6[msb-lst],....,col0row0[msb-lst]#\n')
+file.write('#col1row7[msb-lsb],col1row6[msb-lst],....,col1row0[msb-lst]#\n')
+file.write('#................#\n')
+
+
+for i in range(w_int.size(0)):  # column #
+    for kij in kijg:
+        for j in range(w_int.size(1)): # row #
+            W = w_int[:,:,kij]  # w_tile[tile_num, array col num, array row num, kij]
+            if W[7-j,i].item() >= 0:
+                W_bin = '{0:04b}'.format(round(W[7-j,i].item()))
+            else:
+                W_bin = '{0:04b}'.format(round(W[7-j,i].item()+16))
+            for k in range(bit_precision):
+                file.write(W_bin[k])        
+            #file.write(' ')  # for visibility with blank between words, you can use
+        file.write('\n')
+file.close() #close file 
+
+# print(w_int)
+print(a_pad.shape)
+bit_precision = 4
+chunk = nn.Unfold(kernel_size=(3, 3), padding=0)
+for tile_id in range(2):
+    file = open(f"{model_name}_{tile_id}_os_activation.txt", 'w') #write to file
+    file.write('#time0row7[msb-lsb],time0row6[msb-lst],....,time0row0[msb-lst]#\n')
+    file.write('#time1row7[msb-lsb],time1row6[msb-lst],....,time1row0[msb-lst]#\n')
+    file.write('#................#\n')
+    for i in range(a_pad.shape[0]):
+        X_full = a_pad[i,:].reshape(1,6,6)
+        # print(X)
+        X_c = chunk(X_full)
+        #print(X_c.shape)
+        for kij in kijg:
+            X = X_c[kij,tile_id*8:(tile_id+1)*8]
+            #print(X.shape)
+            for j in range(X.size(0)): # row #
+                X_bin = '{0:04b}'.format(round(X[7-j].item()))
+                for k in range(bit_precision):
+                    file.write(X_bin[k])        
+                #file.write(' ')  # for visibility with blank between words, you can us
+            file.write('\n')
+    file.close() #close file   
+
+print(a_pad[0,:].reshape(1,6,6))
+            
+            
+
+
 '''
 nij = 0 # just a random number
 print(a_pad.shape)

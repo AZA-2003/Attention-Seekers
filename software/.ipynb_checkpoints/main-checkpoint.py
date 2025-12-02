@@ -17,14 +17,14 @@ from orchid_optim import *
 print("Training 4-bit Baseline")
 print("Setting up Model..")
 ## Moon-variant
-model_name = "VGG16_quant_4bit_orchid"
-model = VGG16_quant()
+# model_name = "VGG16_quant_4bit_orchid"
+# model = VGG16_quant()
 ## Original 4-bit model
-# model_name = "VGG16_quant_4bit_base"
+model_name = "VGG16_quant_4bit_base"
 # model = VGG16_quant()
 ## 4-bit modle base for 2-bit training
-# model_name = "VGG16_quant_2bit_4pt"
-# model = VGG16_quant2()
+#model_name = "VGG16_quant_2bit_4pt_orchid"
+model = VGG16_quant()
 #print(model)
 criterion =  nn.CrossEntropyLoss()
 
@@ -71,6 +71,8 @@ warmup_steps = WARMUP_STEPS * (len(iter(trainloader)))
 #                                                     T_max=steps)
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer,
 #                                         step_size=(steps), gamma=0.1)
+## StepLR (default)
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40* (len(iter(trainloader))), gamma=0.1)
 warmup = torch.optim.lr_scheduler.LinearLR(optimizer=optimizer,
                                             start_factor=1/3,
                                             total_iters=warmup_steps)
@@ -86,18 +88,25 @@ trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,tes
 print("Training...")
 trainer.train(EPOCHS)
 trainer.validate(save_weights=True)
-'''
+
+
 print("Training 2-bit Baseline")
 print("Setting up Model..")
 ## Train the 2-bit 
-model_name = "VGG16_quant_2bit_base"
+#model_name = "VGG16_quant_2bit_base"
+#model_name = "VGG16_quant_2bit_orchid"
+model_name = "VGG16_quant_2bit_orchid_no4pt"
 model = VGG16_quant2()
+
 os.makedirs("./results",exist_ok=True)
 os.makedirs(f"./results/{model_name}",exist_ok=True)
 print("Setting up optimizers..")
 ## SGD optimizer
 optimizer = torch.optim.SGD(model.parameters(), lr=LR_2bit, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
-
+## Orchid optimizer
+# optimizer = Orchid(model.parameters(), lr=LR_2bit_o, momentum=MOMENTUM,weight_decay=WEIGHT_DECAY)
+## StepLR (default)
+# scheduler = StepLR(optimizer, step_size=40* (len(iter(trainloader))), gamma=0.1)
 ## Combined LR Scheduler (Warmup followed by Cosine Annealing)
 steps = EPOCHS * (len(iter(trainloader)))
 warmup_steps = WARMUP_STEPS * (len(iter(trainloader)))
@@ -113,15 +122,19 @@ scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer=optimizer,
 print("Setting up Trainer..")
 trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,testloader)
 trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_4pt/chkpoints_good_88.03.pth")['state_dict'])
+
+# trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_4pt_orchid/chkpoints_good_85.15.pth")['state_dict'])
+trainer.validate(save_weights=False)
+
 ## change the activation bits to 2
 for l in trainer.model.features:
     if isinstance(l,QuantConv2d):
         l.a_bit = 2
         l.act_alq = act_quantization(l.a_bit)
-        l.act_alpha = torch.nn.Parameter(torch.tensor(3.0))
+        l.act_alpha = torch.nn.Parameter(torch.tensor(1.0))
 #print(trainer.model.features[30].weight)
 print("Training...")
-trainer.train(EPOCHS)
-trainer.validate(save_weights=True)
-'''
+# trainer.train(EPOCHS)
+# trainer.validate(save_weights=True)
+
 print("Done")

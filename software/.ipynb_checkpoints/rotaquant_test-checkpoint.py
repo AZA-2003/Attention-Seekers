@@ -8,7 +8,7 @@ import torch.backends.cudnn as cudnn
 
 import torchvision
 import torchvision.transforms as transforms
-from rq_model_trainer import *
+from model_trainer import *
 from models import *
 from config import *
 from orchid_optim import *
@@ -21,7 +21,7 @@ print("Setting up Model..")
 # model = VGG16_quant()
 ## 4-bit modle base for 2-bit training
 model_name = "VGG16_rotaq_4bit"
-model = VGG16_rotaqv2()
+model = VGG16_rotaq()
 #print(model)
 criterion =  nn.CrossEntropyLoss()
 #+sum([torch.linalg.matrix_norm(l.weight_quant.wgt_O)] for l in model.features if isinstance(l,RotaQuantConv2d))
@@ -52,13 +52,13 @@ test_dataset = torchvision.datasets.CIFAR10(
 
 testloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE_r, shuffle=False, num_workers=2)
 os.makedirs("./results",exist_ok=True)
-os.makedirs(f"./results/{model_name}_{PRUNE_PERC}",exist_ok=True)
+os.makedirs(f"./results/{model_name}",exist_ok=True)
 
 print("Setting up optimizers..")
 ## Orchid optimizer
-optimizer = Orchid(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r,weight_decay=WEIGHT_DECAY_r)
+# optimizer = Orchid(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r,weight_decay=WEIGHT_DECAY_r)
 ## Adam optimizer (NOT VERY GOOD!)
-#optimizer = torch.optim.AdamW(model.parameters(), lr=LR_4bit_r, weight_decay=WEIGHT_DECAY_r, betas=BETAS_r)
+optimizer = torch.optim.AdamW(model.parameters(), lr=LR_4bit_r, weight_decay=WEIGHT_DECAY_r, betas=BETAS_r)
 ## SGD optimizer
 # optimizer = torch.optim.SGD(model.parameters(), lr=LR_4bit_r, momentum=MOMENTUM_r ,weight_decay=WEIGHT_DECAY_r)
 

@@ -15,9 +15,9 @@ import torchvision
 import torchvision.transforms as transforms
 import torch.nn.utils.prune as prune
 
-model_name = "VGG16_quant_4bit_pruned_sgd"
-# model_name = "VGG16_quant_4bit_pruned_orchid"
-model = VGG16_quant()
+# model_name = "VGG16_quant_2bit_pruned_sgd"
+model_name = "VGG16_quant_2bit_pruned_orchid"
+model = VGG16_quant2()
 #print(model)
 criterion = nn.CrossEntropyLoss()
 
@@ -70,9 +70,9 @@ scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer=optimizer,
 
 
 trainer = Trainer(model_name,model,criterion,optimizer,scheduler,trainloader,testloader)
-trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_4bit_base/chkpoints_prime_92.31.pth")['state_dict'])
-#trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_base/chkpoints_good_87.79.pth")['state_dict'])
-#
+# trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_4bit_base/chkpoints_prime_92.31.pth")['state_dict'])
+trainer.model.load_state_dict(trainer.load_chkpoint("./results/VGG16_quant_2bit_base/chkpoints_good_87.79.pth")['state_dict'])
+
 print("Validating before we begin")
 trainer.validate(save_weights=False)
 
@@ -114,7 +114,7 @@ for i in [7,10,14,17,20,24,27]:
     sparsity_mask1 = (mask1 == 0).sum() / mask1.nelement()
     print("Sparsity level: ", sparsity_mask1)
 
-os.makedirs(f"./results/{model_name}",exist_ok=True)
+os.makedirs(f"./results/{model_name}_{PRUNE_PERC}",exist_ok=True)
 trainer.train(EPOCHS_P)
 trainer.validate(save_weights=True)
 

@@ -114,7 +114,7 @@ for i in [7,10,14,17,20,24,27]:
     sparsity_mask1 = (mask1 == 0).sum() / mask1.nelement()
     print("Sparsity level: ", sparsity_mask1)
 
-os.makedirs(f"./results/{model_name}",exist_ok=True)
+os.makedirs(f"./results/{model_name}_{PRUNE_PERC}",exist_ok=True)
 trainer.train(EPOCHS_P)
 trainer.validate(save_weights=True)
 

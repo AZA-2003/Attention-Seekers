@@ -88,8 +88,8 @@ print(saves_preprune.outputs[0][0].shape,saves_preprune.outputs[1][0].shape, tra
 ## Printing Sparsity levels before pruning
 print("Sparsity levels before pruning")
 for i in [7,10,14,17,20,24,27]:
-    weight = model.features[i].weight
-    w_alpha = model.features[i].weight_quant.wgt_alpha
+    weight = trainer.model.features[i].weight
+    w_alpha = trainer.model.features[i].weight_quant.wgt_alpha
     w_bit = 4
     # w_bit = 2
     weight_q_fn = model.features[i].weight_quant
@@ -111,18 +111,18 @@ prune.ln_structured(trainer.model.features[24], name="weight", amount=PRUNE_PERC
 ##Printing Sparsirty levels after pruning and before furthe training
 print("Sparsity levels after pruning")
 for i in [7,10,14,17,20,24,27]:
-    mask1 = model.features[i].weight_mask
+    mask1 = trainer.model.features[i].weight_mask
     sparsity_mask1 = (mask1 == 0).sum() / mask1.nelement()
     print("Sparsity level: ", sparsity_mask1)
 
-os.makedirs(f"./results/{model_name}",exist_ok=True)
+os.makedirs(f"./results/{model_name}_{PRUNE_PERC}",exist_ok=True)
 trainer.train(EPOCHS_P)
 trainer.validate(save_weights=True)
 
 print("Sparsity levels before pruning")
 for i in [7,10,14,17,20,24,27]:
-    weight = model.features[i].weight
-    w_alpha = model.features[i].weight_quant.wgt_alpha
+    weight = trainer.model.features[i].weight
+    w_alpha = trainer.model.features[i].weight_quant.wgt_alpha
     w_bit = 4
     weight_q_fn = model.features[i].weight_quant
     weight_q = weight_q_fn(weight)
