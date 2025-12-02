@@ -11,11 +11,16 @@ parameter len_onij = 16;
 parameter col = 8;
 parameter row = 8;
 parameter len_nij = 36;
-parameter inst_bw = 39;
+parameter inst_bw = 57;
 parameter ADDR_W = 11;
 
 reg clk = 0;
 reg reset = 1;
+
+reg [5:0] add0_os, add1_os, add2_os, add3_os, add4_os, add5_os, add6_os, add7_os, add;
+
+reg [bw*len_nij-1:0] D_xmem_outstat_q;
+reg [bw*len_nij-1:0] D_xmem_outstat;
 
 wire [inst_bw-1:0] inst_q; 
 
@@ -23,19 +28,31 @@ reg [1:0]  inst_w_q = 0;
 reg [bw*row-1:0] D_xmem_q = 0;
 reg CEN_xmem = 1;
 reg WEN_xmem = 1;
+reg CEN_bmem = 1;
+reg WEN_bmem = 1;
 reg [10:0] A_xmem = 0;
+reg [10:0] A_bmem = 0;
+reg kflush = 0;
 reg CEN_xmem_q = 1;
 reg WEN_xmem_q = 1;
+reg CEN_bmem_q = 1;
+reg WEN_bmem_q = 1;
 reg [10:0] A_xmem_q = 0;
+reg [10:0] A_bmem_q = 0;
 reg CEN_pmem = 1;
 reg WEN_pmem = 1;
 reg [10:0] A_pmem = -1;
 reg CEN_pmem_q = 1;
 reg WEN_pmem_q = 1;
 reg [10:0] A_pmem_q = 0;
+reg kflush_q = 0;
+reg ofifo_wr = 0;
+reg ofifo_wr_q = 0;
 reg ofifo_rd_q = 0;
 reg ififo_wr_q = 0;
 reg ififo_rd_q = 0;
+reg i1fifo_wr_q;
+reg i1fifo_rd_q;
 reg l0_rd_q = 0;
 reg l0_wr_q = 0;
 reg execute_q = 0;
@@ -52,9 +69,13 @@ reg sfu_acc_q = 0;
 reg sfu_relu = 0;
 reg sfu_relu_q = 0;
 reg sfu_relu_2q = 0;
+reg pop = 0;
+reg pop_q = 0;
 
 reg os_or_ws = 0;
 reg os_or_ws_q = 0;
+reg [3:0] index;
+
 
 reg [1:0]  inst_w; 
 reg [bw*row-1:0] D_xmem;
@@ -64,6 +85,8 @@ reg [psum_bw*col-1:0] answer;
 reg ofifo_rd;
 reg ififo_wr;
 reg ififo_rd;
+reg i1fifo_wr;
+reg i1fifo_rd;
 reg l0_rd;
 reg l0_wr;
 reg execute;
@@ -74,8 +97,9 @@ wire ofifo_valid;
 reg ofifo_valid1;
 reg ofifo_valid2;
 wire [col*psum_bw-1:0] sfu_out;
+wire [col*psum_bw-1:0] pmem_out;
 
-integer x_file, x_scan_file ; // file_handler
+integer x_file, x_scan_file, x_file_output_stationary, x_scan_file_out_stat; // file_handler
 integer w_file, w_scan_file ; // file_handler
 integer acc_file, acc_scan_file ; // file_handler
 integer out_file, out_scan_file ; // file_handler
@@ -84,8 +108,18 @@ integer t, i, j, k, kij, m;
 integer error, temp, o_nij;
 integer out_num;
 
-assign inst_q[38] = os_or_ws_q;
+integer nijd = ((len_nij)**0.5);
+integer kijd = ((len_kij)**0.5);
 
+assign inst_q[56] = ofifo_wr_q;
+assign inst_q[55] = pop_q;
+assign inst_q[54] = kflush_q;
+assign inst_q[53] = i1fifo_wr_q;
+assign inst_q[52] = i1fifo_rd_q;
+assign inst_q[51:41] = A_bmem_q;
+assign inst_q[40] = CEN_bmem_q;
+assign inst_q[39] = WEN_bmem_q;
+assign inst_q[38] = os_or_ws_q;
 assign inst_q[37] = sfu_relu_q;
 assign inst_q[36] = sfu_acc_q;
 assign inst_q[35] = ld_mode_q;
@@ -106,14 +140,17 @@ assign inst_q[1]   = execute_q;
 assign inst_q[0]   = load_q; 
 
 
-core  #(.bw(bw), .col(col), .row(row), .inst_bw(inst_bw), 
+core  #(.bw(bw), .col(col), .row(row), .inst_bw(inst_bw), .len_nij(len_nij), 
           .psum_bw(psum_bw), .ADDR_W(ADDR_W)) core_instance (
 	.clk(clk), 
   .reset(reset),
 	.inst(inst_q),
+	.D_xmem_outstat(D_xmem_outstat_q),
+	.input_index({add0_os,add1_os,add2_os,add3_os,add4_os,add5_os,add6_os,add7_os}),
 	.ofifo_valid(ofifo_valid),
   .D_xmem(D_xmem_q), 
-  .sfu_out(sfu_out)
+  .sfu_out(sfu_out),
+  .pmem_out(pmem_out)
 	); 
 
 initial begin 
@@ -140,6 +177,12 @@ initial begin
   x_scan_file = $fscanf(x_file,"%s", captured_data);
   x_scan_file = $fscanf(x_file,"%s", captured_data);
   x_scan_file = $fscanf(x_file,"%s", captured_data);
+  
+  // For Output Stationary
+  x_file_output_stationary = $fopen("./verilog/test_vectors/activation_output_stationary.txt", "r");
+  x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%s", captured_data);
+  x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%s", captured_data);
+  x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%s", captured_data);
 
   //////// Reset /////////
   #0.5 clk = 1'b0;   reset = 1;
@@ -158,10 +201,11 @@ initial begin
 
   // Setting Weight/Output Stationary mode
 
-  os_or_ws = 1'b0; // Weight Stationary
+  os_or_ws = 1'b1; // Weight Stationary
   
   /////////////////////////
 
+  if (os_or_ws == 1'b0) begin // {
   /////// Activation data writing to memory ///////
   for (t=0; t<len_nij; t=t+1) begin  
     #0.5 clk = 1'b0;  x_scan_file = $fscanf(x_file,"%32b", D_xmem); WEN_xmem = 0; CEN_xmem = 0; if (t>0) A_xmem = A_xmem + 1;
@@ -336,7 +380,162 @@ initial begin
   ////////// SFU accumulate and RELU in parallel //////////
   
   end  // end of kij loop
+  end // }
+  else begin // { Output Stationary: OS = 1
+     #0.5 clk = 1'b0; WEN_xmem = 0; CEN_xmem = 0;
+     #0.5 clk = 1'b1;	
+     for(i=0; i<8; i=i+1)begin
+     x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%144b", D_xmem_outstat);
+     index = 4'd0; add = 6'd0;
+     for (t=0; t<len_kij; t=t+1) begin
+	#0.5 clk = 1'b0; WEN_xmem = 0; CEN_xmem = 0; if(t>=0)A_xmem = A_xmem + 1;
+	add0_os = 6'd0 + add; 
+	add1_os = 6'd1 + add; 
+	add2_os = 6'd2 + add; 
+	add3_os = 6'd3 + add; 
+	add4_os = (6'd0+nijd) + add; 
+	add5_os = (6'd1+nijd) + add; 
+	add6_os = (6'd2+nijd) + add; 
+	add7_os = (6'd3+nijd) + add;
+	index = index+1;
+	if(index==kijd) begin add =(6'd0 + nijd); end
+	else if(index==kijd*2) begin add = (4'd0 + 2*nijd); end 
+        else begin add = add+1; end
+        #0.5 clk = 1'b1;
+     end
+  end
+
+  #0.5 clk = 1'b0;  WEN_xmem = 1;  CEN_xmem = 1; A_xmem = 0;
+  #0.5 clk = 1'b1;  
+  $fclose(x_file);
+
+   w_file_name = "./verilog/test_vectors/weight_output_stationary.txt"; 
+   //memory 2 load with weight data
+
+   w_file = $fopen(w_file_name, "r");
+   // Following three lines are to remove the first three comment lines of the file
+   w_scan_file = $fscanf(w_file,"%s", captured_data);
+   w_scan_file = $fscanf(w_file,"%s", captured_data);
+   w_scan_file = $fscanf(w_file,"%s", captured_data);
+   
+   #0.5 clk = 1'b0;   reset = 1;
+    #0.5 clk = 1'b1; 
+
+    for (i=0; i<2 ; i=i+1) begin
+      #0.5 clk = 1'b0;
+      #0.5 clk = 1'b1;  
+    end
+
+    #0.5 clk = 1'b0;   reset = 0;
+    #0.5 clk = 1'b1; 
+
+    #0.5 clk = 1'b0;   
+    #0.5 clk = 1'b1;
+
+    $display("Kernel Data to Memory");
+    A_bmem = 11'b00000000000;
   
+    for (t=0; t<col*len_kij; t=t+1) begin  
+      	#0.5 clk = 1'b0;  w_scan_file = $fscanf(w_file,"%32b", D_xmem); WEN_bmem = 0; CEN_bmem = 0; if (t>0) A_bmem = A_bmem + 1; 
+        #0.5 clk = 1'b1;  
+    end
+    
+    #0.5 clk = 1'b0;  WEN_bmem = 1;  CEN_bmem = 1; A_xmem = 0;
+    #0.5 clk = 1'b1;
+    #0.5 clk = 1'b0; 
+    #0.5 clk = 1'b1;
+
+    // Load L0 and L1 FIFO together
+    A_xmem = 11'b00000000000;
+    A_bmem = 11'b00000000000;
+    A_pmem = 11'b00000000000;
+    #0.5 clk = 1'b0; WEN_xmem = 1; CEN_xmem = 0; WEN_bmem = 1; CEN_bmem = 0;
+    #0.5 clk = 1'b1;
+    
+    $display("Data to fifos and execute");
+    for (t=0; t<col*len_kij+50; t=t+1) begin  
+      	#0.5 clk = 1'b0;  l0_wr = 1; l0_rd = 0; i1fifo_wr = 1; i1fifo_rd = 0; WEN_xmem = 1; CEN_xmem = 0; WEN_bmem = 1; CEN_bmem = 0; A_xmem = A_xmem + 1; A_bmem = A_bmem+1;
+	if (ld_mode == 1'b1) begin
+	   ofifo_wr = 1;   
+	end
+	if(t>2) begin
+	   execute=1;load=0; l0_wr = 1; l0_rd = 1; i1fifo_wr = 1; i1fifo_rd = 1;
+	end
+	if(t>(col*len_kij+3)) begin
+	   execute=0;load=1; ld_mode = 1;
+	end
+        #0.5 clk = 1'b1;  
+    end
+
+    
+    #0.5 clk = 1'b0;  l0_wr = 0; l0_rd = 0; i1fifo_wr = 0; i1fifo_rd = 0; WEN_xmem = 1; CEN_xmem = 1; WEN_bmem = 1; CEN_bmem = 1;execute=0;load=0; ld_mode=0; 
+    l0_wr = 0; l0_rd = 0; ofifo_wr = 0;
+    #0.5 clk = 1'b1;
+    
+    for (t=0; t<10; t=t+1) begin
+	    #0.5 clk = 1'b0;
+	    #0.5 clk = 1'b1;
+    end
+
+    #0.5 clk = 1'b0; WEN_pmem = 1; CEN_pmem = 1; ofifo_rd = 1; 
+    #0.5 clk = 1'b1;
+    A_pmem = -1;
+    $display("RELU");	
+    for (t=0; t<col+1; t=t+1) begin 
+      	#0.5 clk = 1'b0; WEN_pmem = 0; CEN_pmem = 0; ofifo_rd = 1; sfu_relu=1; if(t>0) A_pmem=A_pmem+1;
+        #0.5 clk = 1'b1;  
+    end
+
+    #0.5 clk = 1'b0; WEN_pmem = 1; CEN_pmem = 1; sfu_relu = 0; ofifo_rd = 0; 
+    #0.5 clk = 1'b1; 
+    out_file = $fopen("./verilog/test_vectors/out_relu.txt", "r"); 
+
+    out_scan_file = $fscanf(out_file,"%s", answer); 
+    out_scan_file = $fscanf(out_file,"%s", answer); 
+    out_scan_file = $fscanf(out_file,"%s", answer); 
+
+    error = 0;
+
+
+  #0.5 clk = 1'b0; 
+  #0.5 clk = 1'b1;
+  #0.5 clk = 1'b0; acc = 1; WEN_pmem = 1; CEN_pmem = 0;
+  #0.5 clk = 1'b1;
+  $display("############ Verification Start during accumulation #############"); 
+  A_pmem=0;
+
+  for (i=0; i<len_onij/2+1; i=i+1) begin 
+	
+    #0.5 clk = 1'b0; acc = 1; WEN_pmem = 1; CEN_pmem = 0; if(i>=0)A_pmem = A_pmem+1;
+    #0.5 clk = 1'b1; 
+
+    if (i>0) begin
+     out_scan_file = $fscanf(out_file,"%128b", answer); // reading from out file to answer
+       if (pmem_out == answer) begin
+         $display("%2d-th output featuremap Data matched for Output Stationary! :D", i); 
+ 	 $display("sfpout: %128b", pmem_out);
+         $display("answer: %128b", answer);
+       end
+       else begin
+         $display("%2d-th output featuremap Data ERROR!!", i); 
+         $display("sfpout: %128b", pmem_out);
+         $display("answer: %128b", answer);
+         error = 1;
+       end
+    end
+  end
+
+
+  if (error == 0) begin
+  	$display("############ No error detected ##############"); 
+  	$display("########### Project Completed !! ############"); 
+
+  end
+  //////////////////////////////////
+
+  end // }
+  
+  if (os_or_ws == 1'b0) begin // { 
   ////////// Start verification with RELU in parallel //////////
 
   out_file = $fopen("./verilog/test_vectors/VGG16_quant_4bit_base_0_output_relu.txt", "r");  
@@ -393,12 +592,31 @@ initial begin
   #0.5 clk = 1'b0;
   #0.5 clk = 1'b1;
   sfu_acc = 0; sfu_relu = 0; WEN_pmem = 1; CEN_pmem = 1;
+  #0.5 clk = 1'b0;
+  #0.5 clk = 1'b1;
+  if (sfu_relu_2q == 1'b1) begin
+      out_scan_file = $fscanf(out_file, "%128b", answer);
+      // Compare output from the module with the expected answer
+      if (sfu_out == answer) begin
+          $display("sfpout: %128b", sfu_out);
+          $display("answer: %128b", answer);
+          $display("%2d-th output featuremap Data matched! :D", out_num);
+      end else begin
+          // Report error if the output does not match
+          $display("%2d-th output featuremap Data ERROR!!", out_num); 
+          $display("sfpout: %128b", sfu_out);
+          $display("answer: %128b", answer);
+          error = 1;
+      end
+      out_num = out_num + 1;
+  end
 
   if (error == 0) begin
     $display("############ No error detected ##############"); 
     $display("########### Project Completed !! ############");
   end
-
+  
+  end // }
   ////////// Accumulation /////////
   //out_file = $fopen("./verilog/VGG16_quant_4bit_base_0_output_norelu.txt", "r");  
 
@@ -470,6 +688,14 @@ initial begin
 end
 
 always @ (posedge clk) begin
+   ofifo_wr_q <= ofifo_wr;
+   pop_q <= pop;
+   kflush_q <= kflush;
+   i1fifo_wr_q <= i1fifo_wr;
+   i1fifo_rd_q <= i1fifo_rd;
+   CEN_bmem_q <= CEN_bmem;
+   WEN_bmem_q <= WEN_bmem;
+   A_bmem_q   <= A_bmem;
    os_or_ws_q <= os_or_ws;
    sfu_relu_q <= sfu_relu;
    sfu_relu_2q <= sfu_relu_q;
@@ -497,6 +723,7 @@ end
 always @ (posedge clk) begin
    ofifo_valid1 <= ofifo_valid;
    ofifo_valid2 <= ofifo_valid1;
+   D_xmem_outstat_q   <= D_xmem_outstat;
 end
 
 endmodule

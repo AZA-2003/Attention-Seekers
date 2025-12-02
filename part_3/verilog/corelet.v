@@ -27,7 +27,7 @@ module corelet #(
 
     input                       ofifo_rd,   // Read enable for ofifo
     output [psum_bw*col-1:0]    ofifo_out,  // Output data from ofifo
-
+    input 			ofifo_wr_ext,
     // OFIFO status forwarded out
     output                      ofifo_valid,
 
@@ -50,8 +50,8 @@ module corelet #(
 
     // OFIFO signals
     wire                       ofifo_full;  // Full flag from ofifo
-    wire                       ofifo_ready; // Ready flag from ofifo
-
+    wire                       ofifo_ready; // Ready flag from ofifo 
+    wire [col-1:0]	       ofifo_wr;
     // IFIFO signals
     wire                       ififo_ld_mode;            
     wire [bw*row-1:0]          ififo_out;  // Output flag from IFIFO
@@ -65,6 +65,7 @@ module corelet #(
     // Internal registers for OFIFO
     reg  [col-1:0]             valid_q;
     reg  [psum_bw*col-1:0]     out_s_q;
+    reg  [col-1:0]             temp_fifo_wr;
 
     /*
     assign l0_ld_mode = !execute;
@@ -159,6 +160,7 @@ module corelet #(
         .reset          (reset),
         .acc            (sfu_acc),
         .relu           (sfu_relu),
+	.os_or_ws       (os_or_ws),
         .sfu_in         (sfu_in),
         .sfu_out        (sfu_out)
     );
@@ -169,8 +171,9 @@ module corelet #(
     // For Output Stationary mode, make sure to assign sfu_acc to 0 from the top-level and sfu_relu to 1 always.
     // This is because in OS mode, we want to just apply ReLU to the MAC output directly without accumulation.
 
-    assign sfu_in = os_or_ws ? out_s_q : psum_sram_out;
-
+    assign sfu_in = os_or_ws ? ofifo_out : psum_sram_out;
+    assign ofifo_wr = os_or_ws ? temp_fifo_wr: valid_q;
+    assign ofifo_rd_en = os_or_ws ? ofifo_valid: ofifo_rd;
     ////////// OFIFO Instance //////////
 
     ofifo #(
@@ -180,7 +183,7 @@ module corelet #(
         .clk      (clk),
         .reset    (reset),
         .rd       (ofifo_rd),
-        .wr       (valid_q),
+        .wr       (ofifo_wr),
         .in       (out_s_q),
 
         .out      (ofifo_out),
@@ -198,5 +201,16 @@ module corelet #(
             valid_q   <= mac_valid;
             out_s_q   <= mac_out_s;
         end
+    end
+
+    always @ (posedge clk) begin
+	    temp_fifo_wr[0] <= ofifo_wr_ext;
+	    temp_fifo_wr[1] <= temp_fifo_wr[0];
+	    temp_fifo_wr[2] <= temp_fifo_wr[1]; 
+	    temp_fifo_wr[3] <= temp_fifo_wr[2];
+	    temp_fifo_wr[4] <= temp_fifo_wr[3];
+	    temp_fifo_wr[5] <= temp_fifo_wr[4];
+	    temp_fifo_wr[6] <= temp_fifo_wr[5];
+	    temp_fifo_wr[7] <= temp_fifo_wr[6];
     end
 endmodule

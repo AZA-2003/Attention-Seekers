@@ -4,14 +4,19 @@ module core #(
     parameter row = 8,       // PE rows
     parameter psum_bw = 16,  // Partial sum bit-width
     parameter inst_bw = 39,  // Instruction vector bit-width 
-    parameter ADDR_W = 11    // SRAM Address width
+    parameter len_nij = 36,
+    parameter ADDR_W = 11,   // SRAM Address width
+    parameter DATA_W = 32    // SRAM Data Width
 )(
     input                               clk,
     input                               reset,
     input [inst_bw-1:0]                 inst,           // 34-bit instruction packet from testbench
-    input [bw*row-1:0]                  D_xmem,         // Data written to x-mem by testbench
+    input [DATA_W-1:0]                  D_xmem,         // Data written to x-mem by testbench
+    input [len_nij*bw-1:0]		D_xmem_outstat,
+    input [6*row-1:0]			input_index,
     output                              ofifo_valid,    // Write enable for FIFO output
-    output signed [col*psum_bw-1:0]     sfu_out           // Output feature map
+    output [col*psum_bw-1:0]		pmem_out,  // Output of PSUM SRAM
+    output signed [col*psum_bw-1:0]     sfu_out         // Output feature map
 );
 
     //wire acc;
@@ -53,36 +58,58 @@ module core #(
     assign l0_rd     = inst[3];
     assign l0_wr     = inst[2];
     assign execute   = inst[1];
-    assign kflush      = inst[0];
+    assign kflush    = inst[0];
 
     wire [bw*row-1:0]        l0_in;
-    wire [bw*row-1:0]        Q_wt;
+    wire [DATA_W-1:0]        Q_wt;
+    wire [DATA_W-1:0]        Q_wt1;
     
     wire [bw*row-1:0]        ififo_in;
     wire [psum_bw*col-1:0]   ofifo_out;
 
     wire [col*psum_bw-1:0]   psum_sram_in; 
-    wire [col*psum_bw-1:0]   psum_sram_out; 
+    wire [col*psum_bw-1:0]   psum_sram_out;
+
+    wire [row*bw-1:0]	     D_xmem_sel; 
+    
+    input_selector inputmap (
+  	.in(D_xmem_outstat),
+  	.add(input_index),
+  	.out(D_xmem_sel)
+    );
 
     ////////// Activation/Weight SRAM Instance //////////
 
     sram #(
         .ADDR_W  (ADDR_W),
-        .DATA_W (bw*row)   
+        .DATA_W (DATA_W)   
     ) activation_sram (
         .CLK (clk),
         .CEN (CEN_xmem),
         .WEN (WEN_xmem),
         .A   (A_xmem),
-        .D   (D_xmem),
+        .D   (os_or_ws? D_xmem_sel: D_xmem),
         .Q   (Q_wt)
+    );
+
+    // Weight SRAM for OS
+    sram #(
+        .ADDR_W  (ADDR_W),
+        .DATA_W (DATA_W)   
+    ) activation_os_sram (
+        .CLK (clk),
+        .CEN (inst[40]),
+        .WEN (inst[39]),
+        .A   (inst[51:41]),
+        .D   (D_xmem),
+        .Q   (Q_wt1)
     );
 
     // For both OS and WS modes, L0 input comes from weight SRAM output
     // IFIFO input comes from activation/weight SRAM output as well
 
     assign l0_in = Q_wt;
-    assign ififo_in = Q_wt;
+    assign ififo_in = Q_wt1;
 
     ////////// Corelet Instance //////////
 
@@ -101,8 +128,8 @@ module core #(
         .l0_wr       (l0_wr),
 
         .ififo_in    (ififo_in),
-        .ififo_wr    (ififo_wr),
-        .ififo_rd    (ififo_rd),
+        .ififo_wr    (inst[53]),
+        .ififo_rd    (inst[52]),
 
         .kflush      (kflush),
         .execute     (execute),
@@ -115,7 +142,7 @@ module core #(
         .ofifo_rd    (ofifo_rd),
         .ofifo_out   (ofifo_out),
         .ofifo_valid (ofifo_valid),
-
+	.ofifo_wr_ext (inst[56]),
 	    .psum_sram_out (psum_sram_out),
 	    .sfu_out       (sfu_out)
     );
@@ -137,5 +164,7 @@ module core #(
         .D   (psum_sram_in),
         .Q   (psum_sram_out)
     );
+  
+    assign pmem_out = psum_sram_out;
 
 endmodule
