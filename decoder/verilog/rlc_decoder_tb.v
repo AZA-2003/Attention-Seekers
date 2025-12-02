@@ -2,88 +2,51 @@
 
 module rlc_decoder_tb;
 
-  reg clk;
-  reg reset;
-  reg start;
+    reg clk = 0;
+    reg reset = 1;
 
-  reg [15:0] sram_din;
-  reg sram_valid;
+    reg  [31:0] in_data;
+    reg         in_valid;
+    wire        in_ready;
 
-  wire sram_req;
-  wire [31:0] out;
-  wire done;
+    wire [31:0] out;
+    wire        out_valid;
+    reg         out_ready = 1;
 
-  // instantiate decoder
-  rlc_decoder dut (
-    .clk(clk),
-    .reset(reset),
-    .start(start),
-    .sram_din(sram_din),
-    .sram_valid(sram_valid),
-    .sram_req(sram_req),
-    .out(out),
-    .done(done)
-  );
+    // dut
+    rlc_decoder dut (
+        .clk(clk),
+        .reset(reset),
+        .in_data(in_data),
+        .in_valid(in_valid),
+        .in_ready(in_ready),
+        .out(out),
+        .out_valid(out_valid),
+        .out_ready(out_ready)
+    );
 
-  // clock gen
-  initial begin
-    clk = 0;
-    forever #5 clk = ~clk;     // 100 mhz roughly
-  end
+    always #5 clk = ~clk;
 
-  // small task to feed a 16 bit word
-  task feed_word(input [15:0] w);
-  begin
-    @(posedge clk);
-    sram_din = w;
-    sram_valid = 1;
-    @(posedge clk);
-    sram_valid = 0;
-  end
-  endtask
+    initial begin
+        in_data  = 0;
+        in_valid = 0;
 
-  initial begin
-    reset = 1;
-    start = 0;
-    sram_din = 0;
-    sram_valid = 0;
+        #20 reset = 0;
 
-    repeat(5) @(posedge clk);
-    reset = 0;
+        // dummy data
+        in_data  = 32'b0011_000_1111_000_0101_000_1010_000_0000;
+        in_valid = 1;
 
-    // encoded example
-    // for example encode: 2,3,0,0,0,0,1
-    // value then runlen
-    // 0010 00 0011 11 0000 00 0001 0...
-    // pack it loosely into 16b chunks
-    // this is just for demo. not strict packing
+        wait(in_ready); // wait till accepted
+        #10 in_valid = 0;
 
-    @(posedge clk);
-    start = 1;
-    @(posedge clk);
-    start = 0;
+        #300 $finish;
+    end
 
-    // wait until decoder wants data
-    @(posedge clk);
-    while (!sram_req) @(posedge clk);
-
-    // first chunk
-    feed_word(16'b0010_0000_1100_0000);
-
-    // wait until needs more
-    while (!sram_req) @(posedge clk);
-
-    // second chunk holding rest of bits
-    feed_word(16'b0001_0000_0000_0000);
-
-    // wait for finish
-    wait(done);
-
-    // show result
-    $display("decoded out = %h", out);
-
-    repeat(10) @(posedge clk);
-    $finish;
-  end
+    always @(posedge clk) begin
+        if (out_valid && out_ready) begin
+            $display("t=%0t  out = %h", $time, out);
+        end
+    end
 
 endmodule
