@@ -41,7 +41,15 @@ module weight_stationary_controller #(
 
   // SRAM address outputs and memory control
   output wire [ADDR_W-1:0]        activation_sram_addr,
-  output wire [ADDR_W-1:0]        psum_sram_addr
+  output wire [ADDR_W-1:0]        psum_sram_addr,
+
+  // Clock Gating Control
+  output wire                     weights_sram_clk_en,
+  output wire                     psum_sram_clk_en,
+  output wire                     mac_array_clk_en,
+  output wire                     l0_clk_en,
+  output wire                     ofifo_clk_en,
+  output wire                     sfu_clk_en
 );
 
   /* Controller Implementation Plan:
@@ -539,7 +547,7 @@ module weight_stationary_controller #(
       mac_reset <= 1'b0;
     end
     else begin
-      if((state == KERNEL_LOAD_TO_L0) && (gp_counter == 0)) begin
+      if((state == KERNEL_LOAD_TO_L0) && (gp_counter < 2)) begin
         mac_reset <= 1'b1;
       end
       else begin
@@ -565,5 +573,48 @@ module weight_stationary_controller #(
       endcase
     end
   `endif
+
+  wire weights_sram_clk_en_pre;
+  wire psum_sram_clk_en_pre;
+  wire mac_array_clk_en_pre;
+  wire l0_clk_en_pre;
+  wire sfu_clk_en_pre;
+  wire ofifo_clk_en_pre;
+
+  wire [5:0] sync_in;
+  wire [5:0] sync_out;
+
+  genvar sync_ii;
+  generate
+    for(sync_ii = 0; sync_ii < 6; sync_ii = sync_ii + 1) begin : SYNC_GEN
+      sync #(.STAGES(2)) sync_inst (
+        .clk(clk),
+        .reset(reset),
+        .async_in(sync_in[sync_ii]),
+        .sync_out(sync_out[sync_ii])
+      );
+    end
+  endgenerate
+
+  assign sync_in[0] = weights_sram_clk_en_pre; 
+  assign sync_in[1] = psum_sram_clk_en_pre; 
+  assign sync_in[2] = mac_array_clk_en_pre; 
+  assign sync_in[3] = l0_clk_en_pre; 
+  assign sync_in[4] = sfu_clk_en_pre; 
+  assign sync_in[5] = ofifo_clk_en_pre; 
+
+  assign weights_sram_clk_en_pre = (next_state == KERNEL_LOAD_TO_L0) || (state == IDLE) || (next_state == ACT_LOAD_TO_L0);
+  assign psum_sram_clk_en_pre    = ((next_state == MAC_COMPUTE) || (next_state == SFU_START) || (next_state == SFU_PROCESS)) || (state == IDLE);
+  assign mac_array_clk_en_pre    = ((next_state == MAC_COMPUTE) || (next_state == KERNEL_LOAD_TO_MAC) || (state == IDLE) || (next_state == KERNEL_LOAD_TO_L0) && (gp_counter < 2));
+  assign l0_clk_en_pre           = !(next_state == IDLE || (next_state == SFU_START) || (next_state == SFU_PROCESS));
+  assign sfu_clk_en_pre          = (next_state == SFU_START) || (next_state == SFU_PROCESS);
+  assign ofifo_clk_en_pre        = (next_state == MAC_COMPUTE) || (next_state == SFU_START) || (next_state == SFU_PROCESS);
+
+  assign weights_sram_clk_en = weights_sram_clk_en_pre || sync_out[0];
+  assign psum_sram_clk_en    = psum_sram_clk_en_pre || sync_out[1];
+  assign mac_array_clk_en    = mac_array_clk_en_pre || sync_out[2];
+  assign l0_clk_en           = l0_clk_en_pre || sync_out[3];
+  assign sfu_clk_en          = sfu_clk_en_pre || sync_out[4];
+  assign ofifo_clk_en        = ofifo_clk_en_pre || sync_out[5];
 
 endmodule

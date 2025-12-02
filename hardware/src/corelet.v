@@ -7,7 +7,11 @@ module corelet #(
     parameter ADDR_W = 11      // Address width for PSUM SRAM
 )
 (
-    input                       clk,        // Clock input
+    input                       mac_array_clk,        // Clock input
+    input                       l0_clk,               // Clock input
+    input                       ofifo_clk,            // Clock input
+    input                       sfu_clk,              // Clock input
+
     input                       reset,      // Reset input
     input                       mac_reset,      // Reset input
     input  [bw*row-1:0]         l0_in,      // Input data for ififo
@@ -52,7 +56,7 @@ module corelet #(
         .row(row),      // connect row parameter from parent
         .bw(bw)         // connect bw parameter from parent
     ) u_ififo (
-        .clk      (clk),
+        .clk      (l0_clk),
         .reset    (reset),
         .in       (l0_in),
         .out      (l0_out),
@@ -70,7 +74,7 @@ module corelet #(
         .col(col),  
         .row(row)
     ) u_mac_array (
-        .clk      (clk),
+        .clk      (mac_array_clk),
         .reset    (reset || mac_reset),
         .in_w     (l0_out),
         .in_n     ({(psum_bw*col){1'b0}}),
@@ -84,8 +88,8 @@ module corelet #(
         .col(col),
         .psum_bw(psum_bw),
         .ADDR_W(ADDR_W)
-    ) dut (
-        .clk(clk),
+    ) u_sfu_array (
+        .clk(sfu_clk),
         .reset(reset),
         .start_sfu(sfu_start),
         .sfu_in(sfu_in),
@@ -101,7 +105,7 @@ module corelet #(
         .col(col),          
         .bw(psum_bw)   
     ) u_ofifo (
-        .clk      (clk),
+        .clk      (ofifo_clk),
         .reset    (reset),
         .rd       (ofifo_rd),
         .wr       (mac_valid),

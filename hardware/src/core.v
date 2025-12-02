@@ -62,6 +62,20 @@ module core #(
     reg ofifo_rd_q;
     reg l0_wr_q;
 
+    // Clock Gating Control signals
+    wire weights_sram_clk_en;
+    wire psum_sram_clk_en;
+    wire mac_array_clk_en;
+    wire l0_clk_en;
+    wire ofifo_clk_en;
+    wire sfu_clk_en;
+    wire weights_sram_clk;
+    wire psum_sram_clk;
+    wire mac_array_clk;
+    wire l0_clk;
+    wire ofifo_clk;
+    wire sfu_clk;
+
     // Instruction decoding
     assign controller_debug_mode = inst[ADDR_W + 3];
     assign start_controller = inst[ADDR_W + 2];
@@ -84,6 +98,13 @@ module core #(
         .reset(reset),
         .mac_reset(wsc_mac_reset),
         .debug_mode(controller_debug_mode),
+
+        .weights_sram_clk_en(weights_sram_clk_en),
+        .psum_sram_clk_en(psum_sram_clk_en),
+        .mac_array_clk_en(mac_array_clk_en),
+        .l0_clk_en(l0_clk_en),
+        .ofifo_clk_en(ofifo_clk_en),
+        .sfu_clk_en(sfu_clk_en),
 
         // Configuration inputs
         .num_nij_to_compute(num_nij_to_compute),
@@ -125,7 +146,7 @@ module core #(
         .ADDR_W  (ADDR_W),
         .DATA_W (bw*col)   
     ) u_activation_sram (
-        .CLK (clk),
+        .CLK (weights_sram_clk),
         .CEN (~(wsc_l0_wr || activation_weight_mem_load)),
         .WEN (~activation_weight_mem_load),
         .A   (A_xmem),
@@ -144,7 +165,11 @@ module core #(
         .psum_bw(psum_bw),
         .ADDR_W (ADDR_W)
     ) u_corelet_inst (
-        .clk        (clk),
+        .mac_array_clk     (mac_array_clk),
+        .l0_clk            (l0_clk),
+        .ofifo_clk         (ofifo_clk),
+        .sfu_clk           (sfu_clk),
+        
         .reset      (reset),
         .mac_reset  (wsc_mac_reset),
 
@@ -177,7 +202,7 @@ module core #(
         .ADDR_W  (ADDR_W),
         .DATA_W (psum_bw*col)   
     ) u_psum_sram (
-        .CLK (clk),
+        .CLK (psum_sram_clk),
         .CEN (CEN_pmem),
         .WEN (WEN_pmem),
         .A   (A_pmem),
@@ -200,5 +225,27 @@ module core #(
     // Final assignments
     assign psum_mem_out = Q_out;
     assign core_busy = wsc_controller_active;
+
+    // Clock Gating Control
+    core_clk_gating_control u_core_clk_gating_controller (
+        .clk(clk),
+        .reset(reset),
+
+        // Inputs
+        .weights_sram_clk_en(weights_sram_clk_en),
+        .psum_sram_clk_en(psum_sram_clk_en),
+        .mac_array_clk_en(mac_array_clk_en),
+        .l0_clk_en(l0_clk_en),
+        .ofifo_clk_en(ofifo_clk_en),
+        .sfu_clk_en(sfu_clk_en),
+
+        // Outputs
+        .weights_sram_clk(weights_sram_clk),
+        .psum_sram_clk(psum_sram_clk),
+        .mac_array_clk(mac_array_clk),
+        .l0_clk(l0_clk),
+        .ofifo_clk(ofifo_clk),
+        .sfu_clk(sfu_clk)
+    );
 
 endmodule
