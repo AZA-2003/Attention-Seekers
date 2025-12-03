@@ -1,7 +1,6 @@
 # Software Docs
 This directory handles model training and quantization
 ## Folder Info
-
 Info about the files and directories:
 ### Folders
 - `data`: CIFAR-10 dataset for model training and validation
@@ -10,7 +9,7 @@ Info about the files and directories:
 - `data`: consists of the CIFAR-10 data
 ### Files
 - `model_trainer.py`: sets up training, validation and hooking
-- `main.py`: code to run
+- `main.py`: code to run (alpha 1, 2)
 - `config.py`: model configurations and hyperparameters
 - `models/vgg_rotaquant.py`: implementation of vvgnet model with quantization rotation matrix (alpha 5)
 - `models/rota_quant_layer.py`: implementation of the quantization by rotation matrices module (alpha 5)
@@ -21,7 +20,5 @@ Info about the files and directories:
 - `testvectors.py`: produces the testing vectors for 4-bit model
 - `testvectors_2bit.py`: produces the testing vectors for 2-bit model
 - `testvectors_os.py`: produces the testing vectors for the 4-bit output stationary
-- `{model_name}_{nij}_{kij}_psum.txt`: consists of the psums for a given kij across nij to nij+36
-- `{model_name}_{kij}_weights.txt`: consists of the weights for a given kij
-- `{model_name}_{nij}_activations.txt`: consists of the activations across nij to nij+8 (8 is a hyperparameter, I can expand it)`
+
 

@@ -9,7 +9,7 @@ Info about the files and directories:
 - `data`: consists of the CIFAR-10 data
 ### Files
 - `model_trainer.py`: sets up training, validation and hooking
-- `main.py`: code to run
+- `main.py`: code to run (alpha 1, 2)
 - `config.py`: model configurations and hyperparameters
 - `models/vgg_rotaquant.py`: implementation of vvgnet model with quantization rotation matrix (alpha 5)
 - `models/rota_quant_layer.py`: implementation of the quantization by rotation matrices module (alpha 5)
