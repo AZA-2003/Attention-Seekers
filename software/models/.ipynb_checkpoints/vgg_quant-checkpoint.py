@@ -64,11 +64,12 @@ class VGG_quant(nn.Module):
                 m.show_params()
 
     
-
+## 4-bit weight, activation model
 def VGG16_quant(**kwargs):
     model = VGG_quant(vgg_name = 'VGG16_quant', **kwargs)
     return model
 
+## 4-bit weight, 2-bit activation model
 def VGG16_quant2(**kwargs):
     model = VGG_quant(vgg_name = 'VGG16_quant2', **kwargs)
     return model

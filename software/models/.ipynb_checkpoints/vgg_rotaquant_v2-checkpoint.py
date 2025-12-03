@@ -38,10 +38,6 @@ class VGG_rotaquant2(nn.Module):
         for x in cfg:
             if x == 'M':
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
-            # elif x == 'F':  # This is for the 1st layer
-            #     layers += [nn.Conv2d(in_channels, 64, kernel_size=3, padding=1, bias=False),
-            #                nn.ReLU(inplace=True)]
-            #     in_channels = 64
             elif x == 'X':
                 layers += [RotaQuantConv2d2(in_channels, 8, kernel_size=3, padding=1),
                            nn.ReLU(inplace=True)]

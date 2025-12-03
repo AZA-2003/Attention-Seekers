@@ -1,3 +1,4 @@
 /software/data/
 *.pth
 token.txt
+./software/training_prog.txt
