@@ -386,6 +386,24 @@ initial begin
   #0.5 clk = 1'b0;
   #0.5 clk = 1'b1;
   sfu_acc = 0; sfu_relu = 0; WEN_pmem = 1; CEN_pmem = 1;
+  #0.5 clk = 1'b0;
+  #0.5 clk = 1'b1;
+  if (sfu_relu_2q == 1'b1) begin
+      out_scan_file = $fscanf(out_file, "%128b", answer);
+      // Compare output from the module with the expected answer
+      if (sfu_out == answer) begin
+          $display("sfpout: %128b", sfu_out);
+          $display("answer: %128b", answer);
+          $display("%2d-th output featuremap Data matched! :D", out_num);
+      end else begin
+          // Report error if the output does not match
+          $display("%2d-th output featuremap Data ERROR!!", out_num); 
+          $display("sfpout: %128b", sfu_out);
+          $display("answer: %128b", answer);
+          error = 1;
+      end
+      out_num = out_num + 1;
+  end
 
   if (error == 0) begin
     $display("############ No error detected ##############"); 
