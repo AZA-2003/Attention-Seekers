@@ -1,10 +1,9 @@
 module weight_stationary_controller #(
   // Default parameters
-  parameter bw = 4,         // Bit-width of activations
-  parameter col = 8,        // PE columns
-  parameter row = 8,        // PE rows
-  parameter psum_bw = 16,   // Partial sum bit-width
-  parameter ADDR_W = 11     // Address width for SRAM ports
+  parameter col = 8,              // PE columns
+  parameter row = 8,              // PE rows
+  parameter ADDR_W = 11,          // Address width for SRAM ports
+  parameter INCLUDE_FLUSH_FIFO=1  // 1 = Supporting the version where the FIFO is flushed, 0 = not supporting the version where the FIFO is flushed. )
 )
 (
   input  wire                     clk,
@@ -22,10 +21,12 @@ module weight_stationary_controller #(
   output reg                     execute,
   output reg                     load,
   output reg                     mac_reset,
+  output wire                    ld_mode,
 
   // L0 control signals (outputs)
   output reg                      l0_rd,
   output reg                      l0_wr,
+  output reg                      l0_flush_ptr,
 
   // OFIFO control/status
   input wire                      ofifo_valid,
@@ -94,6 +95,14 @@ module weight_stationary_controller #(
       In this state, we let the SFU process the data.
       - sfu_start is pulsed high for 1 cycle at start of this state
       - We wait in this state until sfu_active goes low again
+  
+  INCLUDE_FLUSH_FIFO:
+  - When the FIFO ptrs are flushable, we will do the following:
+  - On first load:
+  1 - KERNEL_LOAD_T0_LO -> ACT_LOAD_TO_LO -> FIFO SIZE = Num Weights + Num activations
+
+  2 - Then, on subsequent loads, we will flush the FIFO before loading new data:
+      - KERNEL_LOAD_TO_L0 -> MAC_COMPUTE -> FLUSH_FIFO (or FIFO flush at the end of MAC_compute).
 
   */
 
@@ -114,6 +123,9 @@ module weight_stationary_controller #(
   // Wire to indicate kernel load from memory is done
   wire kernel_load_from_mem_done;
   wire kernel_load_to_mac_done;
+
+  // Wire to indicate ACT load from memory is done
+  wire act_load_from_mem_done;
 
   // State mapping
   localparam IDLE = 3'b000;
@@ -211,11 +223,26 @@ module weight_stationary_controller #(
             next_state = IDLE;
             next_prev_state = KERNEL_LOAD_TO_L0;
           end
-          else if(kernel_load_from_mem_done) begin
-            next_state = KERNEL_LOAD_TO_MAC;
-          end
           else begin
-            next_state = KERNEL_LOAD_TO_L0;
+            if(INCLUDE_FLUSH_FIFO) begin
+              if((kij_counter == 0) && kernel_load_from_mem_done) begin
+                next_state = ACT_LOAD_TO_L0;
+              end
+              else if((kernel_load_from_mem_done)) begin
+                next_state = KERNEL_LOAD_TO_MAC;
+              end
+              else begin
+                next_state = KERNEL_LOAD_TO_L0;
+              end
+            end
+            else begin
+              if(kernel_load_from_mem_done) begin
+                next_state = KERNEL_LOAD_TO_MAC;
+              end
+              else begin
+                next_state = KERNEL_LOAD_TO_L0;
+              end
+            end
           end
         end
 
@@ -224,11 +251,23 @@ module weight_stationary_controller #(
             next_state = IDLE;
             next_prev_state = KERNEL_LOAD_TO_MAC;
           end
-          else if(kernel_load_to_mac_done) begin
-            next_state = ACT_LOAD_TO_L0;
-          end
           else begin
-            next_state = KERNEL_LOAD_TO_MAC;
+            if(INCLUDE_FLUSH_FIFO) begin
+              if(kernel_load_to_mac_done) begin
+                next_state = MAC_COMPUTE;
+              end
+              else begin
+                next_state = KERNEL_LOAD_TO_MAC;
+              end
+            end
+            else begin
+              if(kernel_load_to_mac_done) begin
+                next_state = ACT_LOAD_TO_L0;
+              end
+              else begin
+                next_state = KERNEL_LOAD_TO_MAC;
+              end
+            end
           end
         end
 
@@ -237,11 +276,23 @@ module weight_stationary_controller #(
             next_state = IDLE;
             next_prev_state = ACT_LOAD_TO_L0;
           end
-          else if(gp_counter == num_nij_to_compute - 1) begin
-            next_state = MAC_COMPUTE;
-          end
           else begin
-            next_state = ACT_LOAD_TO_L0;
+            if(INCLUDE_FLUSH_FIFO) begin
+              if(act_load_from_mem_done) begin
+                next_state = KERNEL_LOAD_TO_MAC;
+              end
+              else begin
+                next_state = ACT_LOAD_TO_L0;
+              end
+            end
+            else begin
+              if(act_load_from_mem_done) begin
+                next_state = MAC_COMPUTE;
+              end
+              else begin
+                next_state = ACT_LOAD_TO_L0;
+              end
+            end
           end
         end
 
@@ -367,7 +418,7 @@ module weight_stationary_controller #(
         end
       end
       else if(state == KERNEL_LOAD_TO_MAC) begin
-        if(gp_counter == (3*col) - 1) begin
+        if(gp_counter == (2*col) - 1) begin
           next_gp_counter = 0;
         end
         else begin
@@ -390,7 +441,28 @@ module weight_stationary_controller #(
 
   // assign kernel_load_from_mem_done signal
   assign kernel_load_from_mem_done = (state == KERNEL_LOAD_TO_L0) && (gp_counter == col - 1);
-  assign kernel_load_to_mac_done = (state == KERNEL_LOAD_TO_MAC) && (gp_counter == (3*col) - 1);
+  assign kernel_load_to_mac_done = (state == KERNEL_LOAD_TO_MAC) && (gp_counter == (2*col) - 1);
+  assign act_load_from_mem_done = (state == ACT_LOAD_TO_L0) && (gp_counter == num_nij_to_compute - 1);
+
+  // FIFO flush pointer control
+  always @ (posedge clk) begin
+    if (reset) begin
+      l0_flush_ptr <= 1'b0;
+    end
+    else begin
+      if(INCLUDE_FLUSH_FIFO) begin
+        if((state == MAC_COMPUTE) && (gp_counter == num_nij_to_compute - 1)) begin
+          l0_flush_ptr <= 1'b1;
+        end
+        else begin
+          l0_flush_ptr <= 1'b0;
+        end
+      end
+      else begin
+        l0_flush_ptr <= 1'b0;
+      end
+    end
+  end
 
   // L0 FIFO signals control
   always @ (posedge clk) begin
@@ -417,7 +489,7 @@ module weight_stationary_controller #(
         end
         KERNEL_LOAD_TO_MAC: begin
           next_l0_wr = 1'b0;
-          if(gp_counter < col) begin
+          if((gp_counter < (col-1)) || act_load_from_mem_done || (kernel_load_from_mem_done)) begin
             next_l0_rd = 1'b1;
           end 
           else begin
@@ -430,7 +502,7 @@ module weight_stationary_controller #(
         end
         MAC_COMPUTE: begin
           next_l0_wr = 1'b0;
-          if(gp_counter < num_nij_to_compute) begin
+          if(gp_counter < (num_nij_to_compute-1)) begin
             next_l0_rd = 1'b1;
           end
           else begin
@@ -455,7 +527,7 @@ module weight_stationary_controller #(
       case(next_state)
         KERNEL_LOAD_TO_MAC: begin
           execute <= 1'b0;
-          if(gp_counter < col) begin
+          if((gp_counter < (col-1)) || act_load_from_mem_done || (kernel_load_from_mem_done)) begin
             load <= 1'b1; // Load
           end
           else begin
@@ -465,7 +537,7 @@ module weight_stationary_controller #(
         MAC_COMPUTE: begin    
           load <= 1'b0;
 
-          if(gp_counter < num_nij_to_compute) begin
+          if(gp_counter < (num_nij_to_compute)) begin
             execute <= 1'b1; // Execute
           end
           else begin
@@ -603,12 +675,12 @@ module weight_stationary_controller #(
   assign sync_in[4] = sfu_clk_en_pre; 
   assign sync_in[5] = ofifo_clk_en_pre; 
 
-  assign weights_sram_clk_en_pre = (next_state == KERNEL_LOAD_TO_L0) || (state == IDLE) || (next_state == ACT_LOAD_TO_L0);
-  assign psum_sram_clk_en_pre    = ((next_state == MAC_COMPUTE) || (next_state == SFU_START) || (next_state == SFU_PROCESS)) || (state == IDLE);
-  assign mac_array_clk_en_pre    = ((next_state == MAC_COMPUTE) || (next_state == KERNEL_LOAD_TO_MAC) || (state == IDLE) || (next_state == KERNEL_LOAD_TO_L0) && (gp_counter < 2));
-  assign l0_clk_en_pre           = !(next_state == IDLE || (next_state == SFU_START) || (next_state == SFU_PROCESS));
-  assign sfu_clk_en_pre          = (next_state == SFU_START) || (next_state == SFU_PROCESS);
-  assign ofifo_clk_en_pre        = (next_state == MAC_COMPUTE) || (next_state == SFU_START) || (next_state == SFU_PROCESS);
+  assign weights_sram_clk_en_pre = debug_mode || ((next_state == KERNEL_LOAD_TO_L0) || (state == IDLE) || (next_state == ACT_LOAD_TO_L0)); 
+  assign psum_sram_clk_en_pre    = debug_mode || (((next_state == MAC_COMPUTE) || (next_state == SFU_START) || (next_state == SFU_PROCESS)) || (state == IDLE));
+  assign mac_array_clk_en_pre    = debug_mode || (((next_state == MAC_COMPUTE) || (next_state == KERNEL_LOAD_TO_MAC) || (state == IDLE) || (next_state == KERNEL_LOAD_TO_L0) && (gp_counter < 2)));
+  assign l0_clk_en_pre           = debug_mode || (!(next_state == IDLE || (next_state == SFU_START) || (next_state == SFU_PROCESS)));
+  assign sfu_clk_en_pre          = debug_mode || ((next_state == SFU_START) || (next_state == SFU_PROCESS));
+  assign ofifo_clk_en_pre        = debug_mode || ((next_state == MAC_COMPUTE) || (next_state == SFU_START) || (next_state == SFU_PROCESS));
 
   assign weights_sram_clk_en = weights_sram_clk_en_pre || sync_out[0];
   assign psum_sram_clk_en    = psum_sram_clk_en_pre || sync_out[1];
@@ -616,5 +688,8 @@ module weight_stationary_controller #(
   assign l0_clk_en           = l0_clk_en_pre || sync_out[3];
   assign sfu_clk_en          = sfu_clk_en_pre || sync_out[4];
   assign ofifo_clk_en        = ofifo_clk_en_pre || sync_out[5];
+
+  // FIFO Ld Mode
+  assign ld_mode = ~(execute | (next_state == MAC_COMPUTE));
 
 endmodule

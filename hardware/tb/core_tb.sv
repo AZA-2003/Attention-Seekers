@@ -575,7 +575,7 @@ module core_tb;
     $display("Testbench finished at %0t", $time);
     $finish;
   end
-  */
+*/
  initial begin
     // dump waves
     $dumpfile("core_tb.vcd");
@@ -594,13 +594,13 @@ module core_tb;
     repeat (2) @(posedge clk);
 
     // Initialize weights array and write weight rows into activation SRAM
-    //initialize_weights();
-    //initialize_activations();
-    for(i = 0; i < num_kij; i = i + 1) begin
-      initialize_weights_from_file(i);
-    end
+    initialize_weights();
+    initialize_activations();
+    //for(i = 0; i < num_kij; i = i + 1) begin
+      //initialize_weights_from_file(i);
+    //end
 
-    initialize_activations_from_file("./test_vectors/VGG16_quant_4bit_base_0_activation.txt");
+    //initialize_activations_from_file("./test_vectors/VGG16_quant_4bit_base_0_activation.txt");
     calculate_expected_psums();
     calculate_expected_outputs();
 

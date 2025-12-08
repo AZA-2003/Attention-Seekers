@@ -43,6 +43,8 @@ module core #(
     wire [ADDR_W-1:0] wsc_psum_sram_addr;
     wire wsc_sfu_start;
     wire wsc_mac_reset;
+    wire wsc_ld_mode;
+    wire wsc_flush_ptr;
 
     // Corelet signals
     wire corelet_sfu_active;
@@ -88,17 +90,15 @@ module core #(
     assign CEN_pmem = corelet_sfu_active_to_mem ? ~(corelet_psum_mem_rd || corelet_psum_mem_wr) : ~(ofifo_rd_q || psum_memory_rd_enable);
 
     weight_stationary_controller #(
-        .bw(bw),
         .col(col),
         .row(row),
-        .psum_bw(psum_bw),
         .ADDR_W(ADDR_W)
     ) u_wsc_inst (
         .clk(clk),
         .reset(reset),
         .mac_reset(wsc_mac_reset),
         .debug_mode(controller_debug_mode),
-
+        .ld_mode(wsc_ld_mode),
         .weights_sram_clk_en(weights_sram_clk_en),
         .psum_sram_clk_en(psum_sram_clk_en),
         .mac_array_clk_en(mac_array_clk_en),
@@ -122,6 +122,7 @@ module core #(
         // L0 control signals
         .l0_rd(wsc_l0_rd),
         .l0_wr(wsc_l0_wr),
+        .l0_flush_ptr(wsc_flush_ptr),
 
         // OFIFO control signals
         .ofifo_valid(wsc_ofifo_valid),
@@ -176,6 +177,8 @@ module core #(
         .l0_in      (l0_in),
         .l0_rd      (wsc_l0_rd),
         .l0_wr      (l0_wr_q),
+        .ld_mode    (wsc_ld_mode),
+        .l0_flush_ptr (wsc_flush_ptr),
 
         .load       (wsc_load),
         .execute    (wsc_execute),

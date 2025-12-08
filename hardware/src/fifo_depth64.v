@@ -1,12 +1,16 @@
 // Created by prof. Mingu Kang @VVIP Lab in UCSD ECE department
 // Please do not spread this code without permission 
-module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, o_full, o_empty, reset);
+module fifo_depth64 (rd_clk, wr_clk, flush_ptr, in, out, rd, wr, o_full, o_empty, reset);
   parameter bw = 4;
   parameter simd = 1;
+  parameter INCLUDE_FLUSH_FIFO = 0;
   //parameter lrf_depth = 1;
 
   input  rd_clk;
   input  wr_clk;
+
+  input  flush_ptr;
+  
   input  rd;
   input  wr;
   input  reset;
@@ -92,8 +96,14 @@ module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, o_full, o_empty, reset);
   reg [simd*bw-1:0] q62;
   reg [simd*bw-1:0] q63;
 
- assign empty = (wr_ptr == rd_ptr) ? 1'b1 : 1'b0 ;
- assign full  = ((wr_ptr[5:0] == rd_ptr[5:0]) && (wr_ptr[6] != rd_ptr[6])) ? 1'b1 : 1'b0;
+  if(INCLUDE_FLUSH_FIFO == 1) begin
+    assign empty = 1'b0;
+    assign full  = 1'b0;
+  end
+  else begin
+    assign empty = (wr_ptr == rd_ptr) ? 1'b1 : 1'b0 ;
+    assign full  = ((wr_ptr[5:0] == rd_ptr[5:0]) && (wr_ptr[6] != rd_ptr[6])) ? 1'b1 : 1'b0;
+  end
 
  assign o_full  = full;
  assign o_empty = empty;
@@ -128,6 +138,9 @@ module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, o_full, o_empty, reset);
    if (reset) begin
       rd_ptr <= 7'b0000000;
    end
+   else if (flush_ptr) begin
+      rd_ptr <= 0;
+   end
    else if ((rd == 1) && (empty == 0)) begin
       rd_ptr <= rd_ptr + 1;
    end
@@ -139,7 +152,10 @@ module fifo_depth64 (rd_clk, wr_clk, in, out, rd, wr, o_full, o_empty, reset);
       wr_ptr <= 7'b0000000;
    end
    else begin 
-      if ((wr == 1) && (full == 0)) begin
+      if (flush_ptr) begin
+        wr_ptr <= 0;
+      end
+      else if ((wr == 1) && (full == 0)) begin
         wr_ptr <= wr_ptr + 1;
       end
 
