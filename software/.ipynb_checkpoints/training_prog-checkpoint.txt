@@ -1,2 +1,0 @@
-VGG16_quant_V1	Mon Nov 24 16:40:11 2025	75.8
-VGG16_quant_V1	Mon Nov 24 18:00:45 2025	79.91

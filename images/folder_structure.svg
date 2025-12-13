@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="240" viewBox="0 0 760 240">
+  <style>
+    .box{fill:#f4f6fb;stroke:#2f3b52;stroke-width:1.5}
+    .title{font:16px monospace; fill:#2f3b52}
+    .label{font:12px monospace; fill:#1f2a3a}
+  </style>
+  <rect x="10" y="10" width="740" height="220" rx="8" class="box"/>
+  <text x="28" y="34" class="title">ECE284 — Submission Top-level</text>
+
+  <g transform="translate(40,60)">
+    <rect x="0" y="0" width="160" height="36" rx="6" fill="#dfeaf7" stroke="#2f3b52"/>
+    <text x="10" y="23" class="label">Part1_Vanilla/</text>
+
+    <rect x="200" y="0" width="160" height="36" rx="6" fill="#dfeaf7" stroke="#2f3b52"/>
+    <text x="210" y="23" class="label">Part2_SIMD/</text>
+
+    <rect x="400" y="0" width="180" height="36" rx="6" fill="#dfeaf7" stroke="#2f3b52"/>
+    <text x="410" y="23" class="label">Part3_Reconfigurable/</text>
+
+    <rect x="0" y="70" width="160" height="36" rx="6" fill="#f7efe6" stroke="#2f3b52"/>
+    <text x="10" y="93" class="label">Part4_Poster/</text>
+
+    <rect x="200" y="70" width="160" height="36" rx="6" fill="#f7efe6" stroke="#2f3b52"/>
+    <text x="210" y="93" class="label">Part5_Alpha/</text>
+
+    <rect x="400" y="70" width="180" height="36" rx="6" fill="#f7efe6" stroke="#2f3b52"/>
+    <text x="410" y="93" class="label">Part6_Report/</text>
+  </g>
+</svg>

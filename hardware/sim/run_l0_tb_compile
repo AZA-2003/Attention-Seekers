@@ -1,3 +1,0 @@
-verilator -Wall -j 0 --binary -cc -f filelists/l0_tb.f --timing --timescale 1ns/1ps --top-module l0_tb --trace -Wno-UNOPTFLAT -Wno-GENUNNAMED -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-USERFATAL -Wno-ASCRANGE -Wno-DECLFILENAME -Wno-IMPORTSTAR -Wno-WIDTHCONCAT -Wno-PINCONNECTEMPTY -Wno-UNUSEDSIGNAL
-make -C obj_dir/ -f Vl0_tb.mk Vl0_tb
-./obj_dir/Vl0_tb

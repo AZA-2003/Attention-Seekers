@@ -1,0 +1,7 @@
+# Example filelist (use this as a reference)
+# Save as: filelist  (no extension) inside the `hardware/sim` folder
+
+../verilog/core.v
+../verilog/corelet.v
+../verilog/mac_array.v
+# Add additional verilog source paths here, one per line, relative to the sim/ folder

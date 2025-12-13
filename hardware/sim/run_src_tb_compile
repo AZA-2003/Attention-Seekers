@@ -1,3 +1,0 @@
-verilator -Wall -j 0 --binary -cc -f filelists/sfu_tb.f --timing --timescale 1ns/1ps --top-module sfu_tb --trace -Wno-UNOPTFLAT -Wno-GENUNNAMED -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-USERFATAL -Wno-ASCRANGE -Wno-DECLFILENAME -Wno-IMPORTSTAR -Wno-WIDTHCONCAT -Wno-PINCONNECTEMPTY -Wno-UNUSEDSIGNAL
-make -C obj_dir/ -f Vsfu_tb.mk Vsfu_tb
-./obj_dir/Vsfu_tb
