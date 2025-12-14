@@ -1,0 +1,3 @@
+Vcore_tb_fifo_depth64__B10__DepSet_h431ea39c__0.o: \
+ Vcore_tb_fifo_depth64__B10__DepSet_h431ea39c__0.cpp Vcore_tb__pch.h \
+ Vcore_tb_fifo_depth64__B10.h

@@ -1,0 +1,3 @@
+Vcore_tb_fifo_depth64__B10__DepSet_h5d3777e4__0.o: \
+ Vcore_tb_fifo_depth64__B10__DepSet_h5d3777e4__0.cpp Vcore_tb__pch.h \
+ Vcore_tb__Syms.h Vcore_tb_fifo_depth64__B10.h

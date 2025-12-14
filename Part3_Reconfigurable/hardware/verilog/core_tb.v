@@ -201,11 +201,29 @@ initial begin
 
   // Setting Weight/Output Stationary mode
 
-  os_or_ws = 1'b0; // 0 = Weight Stationary, 1 = Output Stationary
+  os_or_ws = 1'b1; // 0 = Weight Stationary, 1 = Output Stationary
   
   repeat(2) begin // START of REPEAT
 
   //////// Reset /////////
+  A_xmem = 0;
+  A_bmem = 0;
+  A_pmem = 0;
+  CEN_xmem = 1;
+  CEN_pmem = 1;
+  CEN_bmem = 1;
+  WEN_xmem = 1;
+  WEN_pmem = 1;
+  WEN_bmem = 1;
+  inst_w   = 0; 
+  ofifo_rd = 0;
+  ififo_wr = 0;
+  ififo_rd = 0;
+  l0_rd    = 0;
+  l0_wr    = 0;
+  execute  = 0;
+  load     = 0;
+
   #0.5 clk = 1'b0;   reset = 1;
   #0.5 clk = 1'b1; 
 
@@ -426,7 +444,7 @@ initial begin
 
   #0.5 clk = 1'b0;  WEN_xmem = 1;  CEN_xmem = 1; A_xmem = 0;
   #0.5 clk = 1'b1;  
-  $fclose(x_file);
+  $fclose(x_file_output_stationary);
 
    w_file_name = "../datafiles/os_vectors/weight.txt"; 
    //memory 2 load with weight data

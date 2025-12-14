@@ -1,0 +1,3 @@
+Vcore_tb_fifo_depth64__I1__DepSet_h19a82279__0__Slow.o: \
+ Vcore_tb_fifo_depth64__I1__DepSet_h19a82279__0__Slow.cpp Vcore_tb__pch.h \
+ Vcore_tb_fifo_depth64__I1.h

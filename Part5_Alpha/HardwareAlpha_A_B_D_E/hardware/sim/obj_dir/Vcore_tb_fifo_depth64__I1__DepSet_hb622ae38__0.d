@@ -1,0 +1,3 @@
+Vcore_tb_fifo_depth64__I1__DepSet_hb622ae38__0.o: \
+ Vcore_tb_fifo_depth64__I1__DepSet_hb622ae38__0.cpp Vcore_tb__pch.h \
+ Vcore_tb_fifo_depth64__I1.h Vcore_tb_fifo_mux_16_1.h
