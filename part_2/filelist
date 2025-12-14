@@ -13,4 +13,4 @@
 ./verilog/sfu_array.v
 ./verilog/corelet.v
 ./verilog/core.v
-./verilog/core_tb_2b.v 
+./verilog/core_tb_combined.v 
