@@ -172,14 +172,14 @@ initial begin
   $dumpfile("core_tb.vcd");
   $dumpvars(0,core_tb);
 
-  x_file = $fopen("./verilog/test_vectors/VGG16_quant_4bit_base_0_activation.txt", "r");
+  x_file = $fopen("../datafiles/ws_vectors/activation.txt", "r");
   // Following three lines are to remove the first three comment lines of the file
   x_scan_file = $fscanf(x_file,"%s", captured_data);
   x_scan_file = $fscanf(x_file,"%s", captured_data);
   x_scan_file = $fscanf(x_file,"%s", captured_data);
   
   // For Output Stationary
-  x_file_output_stationary = $fopen("./verilog/test_vectors/activation_output_stationary.txt", "r");
+  x_file_output_stationary = $fopen("../datafiles/os_vectors/activation.txt", "r");
   x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%s", captured_data);
   x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%s", captured_data);
   x_scan_file_out_stat = $fscanf(x_file_output_stationary,"%s", captured_data);
@@ -201,12 +201,28 @@ initial begin
 
   // Setting Weight/Output Stationary mode
 
-  os_or_ws = 1'b1; // Weight Stationary
+  os_or_ws = 1'b0; // 0 = Weight Stationary, 1 = Output Stationary
   
+  repeat(2) begin // START of REPEAT
+
+  //////// Reset /////////
+  #0.5 clk = 1'b0;   reset = 1;
+  #0.5 clk = 1'b1; 
+
+  #0.5 clk = 1'b0;   reset = 0;
+  #0.5 clk = 1'b1; 
+
+  #0.5 clk = 1'b0;   
+  #0.5 clk = 1'b1;   
+
+  os_or_ws = ~os_or_ws; 
   /////////////////////////
 
   if (os_or_ws == 1'b0) begin // {
   /////// Activation data writing to memory ///////
+
+  $display("Starting Weight Stationary mode verification!");
+
   for (t=0; t<len_nij; t=t+1) begin  
     #0.5 clk = 1'b0;  x_scan_file = $fscanf(x_file,"%32b", D_xmem); WEN_xmem = 0; CEN_xmem = 0; if (t>0) A_xmem = A_xmem + 1;
     #0.5 clk = 1'b1;   
@@ -221,15 +237,15 @@ initial begin
   for (kij=0; kij<9; kij=kij+1) begin  // kij loop
 
     case(kij)
-     0: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_0_weight.txt";
-     1: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_1_weight.txt";
-     2: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_2_weight.txt";
-     3: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_3_weight.txt";
-     4: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_4_weight.txt";
-     5: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_5_weight.txt";
-     6: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_6_weight.txt";
-     7: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_7_weight.txt";
-     8: w_file_name = "./verilog/test_vectors/VGG16_quant_4bit_base_8_weight.txt";
+     0: w_file_name = "../datafiles/ws_vectors/weight_0.txt";
+     1: w_file_name = "../datafiles/ws_vectors/weight_1.txt";
+     2: w_file_name = "../datafiles/ws_vectors/weight_2.txt";
+     3: w_file_name = "../datafiles/ws_vectors/weight_3.txt";
+     4: w_file_name = "../datafiles/ws_vectors/weight_4.txt";
+     5: w_file_name = "../datafiles/ws_vectors/weight_5.txt";
+     6: w_file_name = "../datafiles/ws_vectors/weight_6.txt";
+     7: w_file_name = "../datafiles/ws_vectors/weight_7.txt";
+     8: w_file_name = "../datafiles/ws_vectors/weight_8.txt";
     endcase
     
     w_file = $fopen(w_file_name, "r");
@@ -382,6 +398,9 @@ initial begin
   end  // end of kij loop
   end // }
   else begin // { Output Stationary: OS = 1
+
+  $display("Starting Output Stationary mode verification!");
+
      #0.5 clk = 1'b0; WEN_xmem = 0; CEN_xmem = 0;
      #0.5 clk = 1'b1;	
      for(i=0; i<8; i=i+1)begin
@@ -409,7 +428,7 @@ initial begin
   #0.5 clk = 1'b1;  
   $fclose(x_file);
 
-   w_file_name = "./verilog/test_vectors/weight_output_stationary.txt"; 
+   w_file_name = "../datafiles/os_vectors/weight.txt"; 
    //memory 2 load with weight data
 
    w_file = $fopen(w_file_name, "r");
@@ -488,7 +507,7 @@ initial begin
 
     #0.5 clk = 1'b0; WEN_pmem = 1; CEN_pmem = 1; sfu_relu = 0; ofifo_rd = 0; 
     #0.5 clk = 1'b1; 
-    out_file = $fopen("./verilog/test_vectors/out_relu.txt", "r"); 
+    out_file = $fopen("../datafiles/os_vectors/output_relu.txt", "r"); 
 
     out_scan_file = $fscanf(out_file,"%s", answer); 
     out_scan_file = $fscanf(out_file,"%s", answer); 
@@ -531,6 +550,8 @@ initial begin
   	$display("########### Project Completed !! ############"); 
 
   end
+
+  $display("End of Output Stationary mode verification!");
   //////////////////////////////////
 
   end // }
@@ -538,7 +559,7 @@ initial begin
   if (os_or_ws == 1'b0) begin // { 
   ////////// Start verification with RELU in parallel //////////
 
-  out_file = $fopen("./verilog/test_vectors/VGG16_quant_4bit_base_0_output_relu.txt", "r");  
+  out_file = $fopen("../datafiles/ws_vectors/output_relu.txt", "r");  
 
   // Following three lines are to remove the first three comment lines of the file
   out_scan_file = $fscanf(out_file,"%s", answer); 
@@ -616,6 +637,7 @@ initial begin
     $display("########### Project Completed !! ############");
   end
   
+  $display("End of Weight Stationary mode verification!");
   end // }
   ////////// Accumulation /////////
   //out_file = $fopen("./verilog/VGG16_quant_4bit_base_0_output_norelu.txt", "r");  
@@ -682,6 +704,8 @@ initial begin
     #0.5 clk = 1'b0;  
     #0.5 clk = 1'b1;  
   end
+
+  end // End of REPEAT
 
   #10 $finish;
 
