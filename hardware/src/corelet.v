@@ -17,9 +17,13 @@ module corelet #(
     input  [bw*row-1:0]         l0_in,      // Input data for ififo
     input                       l0_rd,      // Read enable for ififo
     input                       l0_wr,      // Write enable for ififo
+
+    input                       l0_flush_ptr,  // Flush pointer for ififo
+
     input                       load,       // Load instruction for MAC array
     input                       execute,    // Execute instruction for MAC array
     input                       ofifo_rd,   // Read enable for ofifo
+    input                       ld_mode,   // Load mode for weight stationary controller
     output [psum_bw*col-1:0]    ofifo_out,  // Output data from ofifo
 
     // OFIFO status forwarded out
@@ -62,6 +66,8 @@ module corelet #(
         .out      (l0_out),
         .rd       (l0_rd),
         .wr       (l0_wr),
+        .ld_mode  (ld_mode),
+        .flush_ptr  (l0_flush_ptr),
         .o_full   (l0_full),
         .o_ready  (l0_ready)
     );
@@ -80,6 +86,7 @@ module corelet #(
         .in_n     ({(psum_bw*col){1'b0}}),
         .out_s    (mac_out_s),
         .inst_w   ({execute, load}),
+        .ld_mode  (ld_mode),
         .valid    (mac_valid)
     );
 
