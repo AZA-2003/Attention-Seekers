@@ -149,15 +149,15 @@ module core_tb;
     string filename;
 
     case(kij_idx)
-      0: filename = "./test_vectors/VGG16_quant_4bit_base_0_weight.txt";
-      1: filename = "./test_vectors/VGG16_quant_4bit_base_1_weight.txt";
-      2: filename = "./test_vectors/VGG16_quant_4bit_base_2_weight.txt";
-      3: filename = "./test_vectors/VGG16_quant_4bit_base_3_weight.txt";
-      4: filename = "./test_vectors/VGG16_quant_4bit_base_4_weight.txt";
-      5: filename = "./test_vectors/VGG16_quant_4bit_base_5_weight.txt";
-      6: filename = "./test_vectors/VGG16_quant_4bit_base_6_weight.txt";
-      7: filename = "./test_vectors/VGG16_quant_4bit_base_7_weight.txt";
-      8: filename = "./test_vectors/VGG16_quant_4bit_base_8_weight.txt";
+      0: filename = "../datafiles/weight_0.txt";
+      1: filename = "../datafiles/weight_1.txt";
+      2: filename = "../datafiles/weight_2.txt";
+      3: filename = "../datafiles/weight_3.txt";
+      4: filename = "../datafiles/weight_4.txt";
+      5: filename = "../datafiles/weight_5.txt";
+      6: filename = "../datafiles/weight_6.txt";
+      7: filename = "../datafiles/weight_7.txt";
+      8: filename = "../datafiles/weight_8.txt";
     endcase
 
     fd = $fopen(filename, "r");
@@ -594,13 +594,14 @@ module core_tb;
     repeat (2) @(posedge clk);
 
     // Initialize weights array and write weight rows into activation SRAM
-    initialize_weights();
-    initialize_activations();
-    //for(i = 0; i < num_kij; i = i + 1) begin
-      //initialize_weights_from_file(i);
-    //end
+    //initialize_weights();
+    //initialize_activations();
 
-    //initialize_activations_from_file("./test_vectors/VGG16_quant_4bit_base_0_activation.txt");
+    for(i = 0; i < num_kij; i = i + 1) begin
+      initialize_weights_from_file(i);
+    end
+
+    initialize_activations_from_file("../datafiles/activation.txt");
     calculate_expected_psums();
     calculate_expected_outputs();
 
