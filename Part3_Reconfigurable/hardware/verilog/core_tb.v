@@ -208,7 +208,6 @@ initial begin
   //////// Reset /////////
   A_xmem = 0;
   A_bmem = 0;
-  A_pmem = 0;
   CEN_xmem = 1;
   CEN_pmem = 1;
   CEN_bmem = 1;
@@ -235,8 +234,15 @@ initial begin
 
   os_or_ws = ~os_or_ws; 
   /////////////////////////
+  if(os_or_ws == 1'b0) begin
+    A_pmem = -1;
+  end
+  else begin
+    A_pmem = 0;
+  end
 
   if (os_or_ws == 1'b0) begin // {
+
   /////// Activation data writing to memory ///////
 
   $display("Starting Weight Stationary mode verification!");
